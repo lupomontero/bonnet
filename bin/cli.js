@@ -44,7 +44,8 @@ if (cmd === 'start') {
   var server = require('../lib/server');
 
   async.applyEachSeries([
-    couch
+    couch,
+    server
   ], config, function (err) {
     if (err) {
       console.error(err);
