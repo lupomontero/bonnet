@@ -1,47 +1,20 @@
-var path = require('path');
-var Hapi = require('hapi');
+var async = require('async');
+var config = require('./config');
+var couch = require('./couch');
+var www = require('./www');
 
-module.exports = function (config, cb) {
 
-  var server = new Hapi.Server();
+module.exports = function (argv) {
 
-  server.connection({ port: config.port });
-
-  server.route({
-    method: [ 'OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'DELETE' ],
-    path: '/_api/{p*}',
-    handler: {
-      proxy: {
-        passThrough: true,
-        mapUri: function (req, cb) {
-          cb(null, config.couchdb.url + req.url.path.substr('/_api'.length), req.headers);
-        },
-        //onResponse: function (err, resp, req, reply) {}
-      }
+  async.applyEachSeries([
+    couch,
+    www
+  ], config(argv), function (err) {
+    if (err) {
+      console.error(err);
+      process.exit(1);
     }
-  });
-
-  server.route({
-    method: 'GET',
-    path: '/_files/bonnet.js',
-    handler: {
-      file: path.join(__dirname, '../client/bundle.js')
-    }
-  });
-
-  server.route({
-    method: 'GET',
-    path: '/{param*}',
-    handler: {
-      directory: {
-        path: 'www'
-      }
-    }
-  });
-
-  server.start(function () {
-    console.log('Backend started on port ' + config.port);
-    cb();
+    console.log('Bonnet back-end has started ;-)');
   });
 
 };

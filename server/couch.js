@@ -7,8 +7,12 @@ function startPouchDBServer(config, cb) {
   var bin = path.join(__dirname, '../node_modules/pouchdb-server/bin/pouchdb-server');
   var dataDir = path.join(config.dir, 'data');
   var port = config.port + 1;
-  var args = [ '--port', port, '--dir', dataDir ];
-  var options = { /*stdio: 'inherit'*/ };
+  var args = [
+    '--port', port,
+    '--dir', dataDir,
+    '--config', path.join(dataDir, 'config.json')
+  ];
+  var options = { cwd: dataDir/*, stdio: 'inherit'*/ };
   var child = cp.spawn(bin, args, options);
 
   function checkIfStarted(chunk) {

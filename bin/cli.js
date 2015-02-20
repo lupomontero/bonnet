@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 var minimist = require('minimist');
-var async = require('async');
 var pkg = require('../package.json');
 var argv = minimist(process.argv.slice(2));
 var cmd = argv._.shift();
@@ -24,7 +23,7 @@ if (argv.h || argv.help || !cmd || cmd === 'help') {
     '',
     'Commands:',
     '',
-    'start            Start hoodie app.',
+    'start            Start bonnet server.',
     '',
     'Options:',
     '',
@@ -39,20 +38,7 @@ if (argv.h || argv.help || !cmd || cmd === 'help') {
 
 if (cmd === 'start') {
 
-  var config = require('../server/config')(argv);
-  var couch = require('../server/couch');
-  var server = require('../server');
-
-  async.applyEachSeries([
-    couch,
-    server
-  ], config, function (err) {
-    if (err) {
-      console.error(err);
-      process.exit(1);
-    }
-    console.log('Bonnet back-end has started ;-)');
-  });
+  require('../server')(argv);
 
 } else {
 
