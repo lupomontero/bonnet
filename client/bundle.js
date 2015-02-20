@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"./lib/client/index.js":[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"./client/index.js":[function(require,module,exports){
 var _ = require('lodash');
 var async = require('async');
 var Backbone = require('backbone');
@@ -54,7 +54,7 @@ Bonnet.Backbone = Backbone;
 Bonnet.Handlebars = Handlebars;
 
 
-},{"./account":"/Users/lupo/work/lupomontero/bonnet/lib/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/lib/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/lib/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/lib/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/lib/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/lib/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/lib/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/account.js":[function(require,module,exports){
+},{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
 
@@ -105,7 +105,7 @@ module.exports = function (bonnet, settings) {
 };
 
 
-},{"events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/app-view.js":[function(require,module,exports){
+},{"events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 
@@ -182,7 +182,7 @@ module.exports = Backbone.View.extend({
 });
 
 
-},{"backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/app.js":[function(require,module,exports){
+},{"backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 var AppView = require('./app-view');
@@ -226,7 +226,7 @@ module.exports = Backbone.Router.extend({
 });
 
 
-},{"./app-view":"/Users/lupo/work/lupomontero/bonnet/lib/client/app-view.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/collection.js":[function(require,module,exports){
+},{"./app-view":"/Users/lupo/work/lupomontero/bonnet/client/app-view.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/collection.js":[function(require,module,exports){
 var Backbone = require('backbone');
 var Model = require('./model');
 var noop = function () {};
@@ -265,7 +265,7 @@ module.exports = Backbone.Collection.extend({
 });
 
 
-},{"./model":"/Users/lupo/work/lupomontero/bonnet/lib/client/model.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/model.js":[function(require,module,exports){
+},{"./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js"}],"/Users/lupo/work/lupomontero/bonnet/client/model.js":[function(require,module,exports){
 var assert = require('assert');
 var _ = require('lodash');
 var Backbone = require('backbone');
@@ -314,7 +314,7 @@ module.exports = Backbone.Model.extend({
 });
 
 
-},{"assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/store.js":[function(require,module,exports){
+},{"assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/store.js":[function(require,module,exports){
 var assert = require('assert');
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
@@ -436,7 +436,7 @@ module.exports = function (bonnet, settings) {
 };
 
 
-},{"assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","pouchdb":"/Users/lupo/work/lupomontero/bonnet/node_modules/pouchdb/lib/index.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/client/task.js":[function(require,module,exports){
+},{"assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","pouchdb":"/Users/lupo/work/lupomontero/bonnet/node_modules/pouchdb/lib/index.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/task.js":[function(require,module,exports){
 module.exports = function (bonnet) {
 
   return {};
@@ -444,7 +444,7 @@ module.exports = function (bonnet) {
 };
 
 
-},{}],"/Users/lupo/work/lupomontero/bonnet/lib/client/view.js":[function(require,module,exports){
+},{}],"/Users/lupo/work/lupomontero/bonnet/client/view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 var Handlebars = require('handlebars');
@@ -40017,4 +40017,4 @@ module.exports = asap;
 
 
 }).call(this,require('_process'))
-},{"_process":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/process/browser.js"}]},{},["./lib/client/index.js"]);
+},{"_process":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/process/browser.js"}]},{},["./client/index.js"]);

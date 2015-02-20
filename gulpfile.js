@@ -14,7 +14,7 @@ var watchify = require('watchify');
 var browserify = require('browserify');
 
 
-var appPath = './lib/client';
+var appPath = './client';
 var bundler = watchify(browserify(appPath + '/index.js', watchify.args));
 
 
@@ -32,7 +32,11 @@ gulp.task('browserify', bundle);
 
 gulp.task('lint', function () {
   return gulp.src([
-    'gulpfile.js', 'bin/**/*.js', 'lib/**/*.js', 'test/**/*.js'
+    'gulpfile.js',
+    'bin/**/*.js',
+    'client/**/*.js',
+    'server/**/*.js',
+    'test/**/*.js'
   ])
     .pipe(jshint())
     .pipe(jshint.reporter('jshint-stylish'));

@@ -39,9 +39,9 @@ if (argv.h || argv.help || !cmd || cmd === 'help') {
 
 if (cmd === 'start') {
 
-  var config = require('../lib/config')(argv);
-  var couch = require('../lib/couch');
-  var server = require('../lib/server');
+  var config = require('../server/config')(argv);
+  var couch = require('../server/couch');
+  var server = require('../server');
 
   async.applyEachSeries([
     couch,
