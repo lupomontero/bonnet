@@ -1,16 +1,28 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"./admin/main.js":[function(require,module,exports){
 var Backbone = require('backbone');
+// Have to tell Backbone where to find jQuery
 Backbone.$ = window.jQuery;
 
-
+var Couch = require('./couch');
 var App = require('../client/app');
 var opt = { routePrefix: '_admin/' };
 var app = new App(opt);
+var session;
 
 
-app.route('', function () {
-  console.log('');
-});
+function requireAdmin(fn) {
+  return function () {
+    if (session.userCtx.roles.indexOf('_admin') === -1) {
+      return app.navigate('signin', { trigger: true });
+    }
+    fn.apply(this, Array.prototype.slice.call(arguments, 0));
+  };
+}
+
+
+app.route('', requireAdmin(function () {
+  this.showView(require('./views/index'));
+}));
 
 
 app.route('signin', function () {
@@ -18,10 +30,125 @@ app.route('signin', function () {
 });
 
 
-app.start();
+Couch('/_api').get('/_session', function (err, data) {
+  session = data || { userCtx: { name: null, roles: [] } };
+  app.start();
+});
 
 
-},{"../client/app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./views/signin":"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js"}],"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js":[function(require,module,exports){
+},{"../client/app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./couch":"/Users/lupo/work/lupomontero/bonnet/admin/couch.js","./views/index":"/Users/lupo/work/lupomontero/bonnet/admin/views/index.js","./views/signin":"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js"}],"/Users/lupo/work/lupomontero/bonnet/admin/couch.js":[function(require,module,exports){
+var _ = require('lodash');
+
+
+function createApi(opt) {
+
+  var baseurl = opt.url;
+
+  function req(/* method, path, params, data, cb */) {
+    var args = _.toArray(arguments);
+    var method = args.shift();
+    var path = args.shift();
+    var cb = (typeof args[args.length - 1] === 'function') ? args.pop() : noop;
+
+    // Add leading slash if needed.
+    if (path.charAt(0) !== '/') { path = '/' + path; }
+
+    var reqOpt = {
+      type: method,
+      url: opt.url + path,
+      dataType: 'json',
+      error: function (xhr) { 
+        var err = new Error(xhr.responseJSON.error);
+        err.statusCode = xhr.status;
+        err.reason = xhr.responseJSON.reason;
+        cb(err); 
+      },
+      success: function (data) {
+        cb(null, data);
+      }
+    };
+
+    if (opt.user && opt.pass) {
+      reqOpt.username = opt.user;
+      reqOpt.password = opt.pass;
+    }
+
+    if ([ 'PUT', 'POST' ].indexOf(method) >= 0) {
+      reqOpt.data = args.pop();
+    }
+
+    if (args.length) {
+      reqOpt.url += _.reduce(args.shift(), function (memo, v, k) {
+        return memo += encodeURIComponent(k) + '=' + encodeURIComponent(JSON.stringify(v));
+      }, '?');
+    }
+
+    return $.ajax(reqOpt, cb);
+  }
+
+  return {
+    get: req.bind(null, 'GET'),
+    post: req.bind(null, 'POST'),
+    put: req.bind(null, 'PUT'),
+    del: req.bind(null, 'DELETE'),
+  };
+
+}
+
+
+module.exports = function (opt) {
+
+  if (typeof opt === 'string') {
+    opt = { url: opt }
+  }
+
+  var api = createApi(opt);
+
+  api.db = function (dbName) {
+    var db = createApi(_.extend({}, opt, {
+      url: opt.url + '/' + encodeURIComponent(dbName)
+    }));
+
+    db.view = function () {};
+
+    return db;
+  };
+
+  api.isAdminParty = function (cb) {
+    api.get('/_users/_all_docs', function (err, data) {
+      if (err && err.statusCode === 401) {
+        cb(null, false);
+      } else if (err) {
+        cb(err);
+      } else {
+        cb(null, true);
+      }
+    });
+  };
+
+  return api;
+
+};
+
+
+},{"lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/admin/views/index.js":[function(require,module,exports){
+module.exports = Bonnet.View.extend({
+
+  className: 'container',
+  templateName: 'index',
+
+  initialize: function (opt) {
+    Bonnet.View.prototype.initialize.call(this, opt);
+    this.render();
+  }
+
+});
+
+
+},{}],"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js":[function(require,module,exports){
+var Couch = require('../couch');
+
+
 module.exports = Bonnet.View.extend({
 
   className: 'container',
@@ -31,12 +158,29 @@ module.exports = Bonnet.View.extend({
     var view = this;
     Bonnet.View.prototype.initialize.call(view, opt);
     view.render();
+  },
+
+  events: {
+    'submit #signin-form': 'submit'
+  },
+
+  submit: function (e) {
+    e.preventDefault();
+    var app = this.options.app;
+    var credentials = { name: 'admin', password: $('#pass').val() };
+
+    Couch('/_api').post('/_session', credentials, function (err, data) {
+      if (err) { return console.error(err); }
+      window.location = '/_admin';
+    });
+
+    return false;
   }
 
 });
 
 
-},{}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
+},{"../couch":"/Users/lupo/work/lupomontero/bonnet/admin/couch.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 
