@@ -15,9 +15,18 @@ module.exports = function (config, cb) {
       proxy: {
         passThrough: true,
         mapUri: function (req, cb) {
-          cb(null, config.couchdb.url + req.url.path.substr('/_api'.length), req.headers);
-        },
-        //onResponse: function (err, resp, req, reply) {}
+          cb(null, config.couchdb.url + req.url.path.substr(5), req.headers);
+        }
+      }
+    }
+  });
+
+  server.route({
+    method: [ 'OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'DELETE' ],
+    path: '/_admin/{p*}',
+    handler: {
+      directory: {
+        path: path.join(__dirname, '../admin')
       }
     }
   });
@@ -32,12 +41,34 @@ module.exports = function (config, cb) {
 
   server.route({
     method: 'GET',
-    path: '/{param*}',
+    path: '/{p*}',
     handler: {
       directory: {
         path: 'www'
       }
     }
+  });
+
+  // Redirect 404s for HTML docs to index.
+  server.ext('onPostHandler', function (req, reply) {
+    var resp = req.response;
+
+    if (!resp.isBoom) { return reply.continue(); }
+
+    var is404 = (resp.output.statusCode === 404);
+    var isHTML = /text\/html/.test(req.headers.accept);
+
+    // We only care about 404 for html requests...
+    if (!is404 || !isHTML) { return reply.continue(); }
+
+    var path = req.url.path.replace(/^\//, '');
+    var prefix = '/';
+    if (/^_admin/.test(path)) {
+      prefix = '/_admin/';
+      path = path.replace(/^_admin\//, '');
+    }
+
+    reply.redirect(prefix + '#' + path);
   });
 
   server.start(function () {

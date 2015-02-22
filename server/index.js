@@ -1,13 +1,13 @@
 var async = require('async');
 var config = require('./config');
-var couch = require('./couch');
+var installer = require('./installer');
 var www = require('./www');
 
 
 module.exports = function (argv) {
 
   async.applyEachSeries([
-    couch,
+    installer,
     www
   ], config(argv), function (err) {
     if (err) {

@@ -22,6 +22,11 @@ module.exports = function (bonnet, settings) {
 
   account.resetPassword = function () {};
 
+  account.isSignedIn = function () {
+    var userCtx = (account.session || {}).userCtx || {};
+    return (typeof userCtx.name === 'string' && userCtx.name.length > 0);
+  };
+
   account.init = function (cb) {
     var state = localStorage.getItem('_bonnet_state');
     if (state) {

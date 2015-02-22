@@ -1,50 +1,91 @@
-var cp = require('child_process');
-var path = require('path');
-var async = require('async');
+var _ = require('lodash');
+var request = require('request');
+var noop = function () {};
 
 
-function startPouchDBServer(config, cb) {
-  var bin = path.join(__dirname, '../node_modules/pouchdb-server/bin/pouchdb-server');
-  var dataDir = path.join(config.dir, 'data');
-  var port = config.port + 1;
-  var args = [
-    '--port', port,
-    '--dir', dataDir,
-    '--config', path.join(dataDir, 'config.json')
-  ];
-  var options = { cwd: dataDir/*, stdio: 'inherit'*/ };
-  var child = cp.spawn(bin, args, options);
+function createApi(opt) {
 
-  function checkIfStarted(chunk) {
-    if (/pouchdb-server has started/.test(chunk.toString('utf8'))) {
-      console.log('PouchDB Server started on port ' + port);
-      child.stdout.removeListener('data', checkIfStarted);
-      config.couchdb.url = 'http://127.0.0.1:' + port;
-      cb();
+  var baseurl = opt.url;
+
+  function req(/* method, path, params, data, cb */) {
+    var args = _.toArray(arguments);
+    var method = args.shift();
+    var path = args.shift();
+    var cb = (typeof args[args.length - 1] === 'function') ? args.pop() : noop;
+
+    // Add leading slash if needed.
+    if (path.charAt(0) !== '/') { path = '/' + path; }
+
+    var reqOpt = {
+      method: method,
+      url: opt.url + path,
+      json: true
+    };
+
+    if (opt.user && opt.pass) {
+      reqOpt.auth = _.pick(opt, [ 'user', 'pass' ]);
     }
+
+    if ([ 'PUT', 'POST' ].indexOf(method) >= 0) {
+      reqOpt.body = args.pop();
+    }
+
+    if (args.length) {
+      reqOpt.qs = _.reduce(args.shift(), function (memo, v, k) {
+        memo[k] = JSON.stringify(v);
+        return memo;
+      }, {});
+    }
+
+    return request(reqOpt, function (err, resp) {
+      if (err) { return cb(err); }
+      if (resp.statusCode > 201) {
+        err = new Error(resp.body.error);
+        err.statusCode = resp.statusCode;
+        err.reason = resp.body.reason;
+        return cb(err);
+      } 
+      cb(null, resp.body);
+    });
   }
 
-  child.stdout.on('data', checkIfStarted);
+  return {
+    get: req.bind(null, 'GET'),
+    post: req.bind(null, 'POST'),
+    put: req.bind(null, 'PUT'),
+    del: req.bind(null, 'DELETE')
+  };
 
-  child.stderr.on('data', function (chunk) {
-    console.error(chunk.toString('utf8'));
-  });
-
-  child.on('error', function (err) {
-    console.error(err);
-  });
 }
 
 
-module.exports = function (config, cb) {
+module.exports = function (opt) {
 
-  var tasks = [];
+  var api = createApi(opt);
 
-  if (!config.couchdb.url) {
-    tasks.push(startPouchDBServer);
-  }
+  api.db = function (dbName) {
+    var db = createApi(_.extend({}, opt, {
+      url: opt.url + '/' + encodeURIComponent(dbName)
+    }));
 
-  async.applyEachSeries(tasks, config, cb);
+    db.view = function () {};
+
+    return db;
+  };
+
+  api.isAdminParty = function (cb) {
+    api.get('/_users/_all_docs', function (err, data) {
+      if (err && err.statusCode === 401) {
+        cb(null, false);
+      } else if (err) {
+        cb(err);
+      } else {
+        cb(null, true);
+      }
+    });
+  };
+
+  return api;
 
 };
 

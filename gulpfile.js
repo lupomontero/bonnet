@@ -14,20 +14,32 @@ var watchify = require('watchify');
 var browserify = require('browserify');
 
 
-var appPath = './client';
-var bundler = watchify(browserify(appPath + '/index.js', watchify.args));
+var clientBundler = watchify(browserify('./client/index.js', watchify.args));
+var adminBundler = watchify(browserify('./admin/main.js', watchify.args));
 
 
-function bundle() {
-  return bundler.bundle()
+function bundleClient() {
+  console.log('bundling client...');
+  return clientBundler.bundle()
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
     .pipe(source('bundle.js'))
-    .pipe(gulp.dest(appPath));
+    .pipe(gulp.dest('./client'));
+}
+
+function bundleAdmin() {
+  console.log('bundling admin...');
+  return adminBundler.bundle()
+    .on('error', gutil.log.bind(gutil, 'Browserify Error'))
+    .pipe(source('bundle.js'))
+    .pipe(gulp.dest('./admin'));
 }
 
 
-bundler.on('update', bundle);  // on any dep update, runs the bundler
-gulp.task('browserify', bundle);
+clientBundler.on('update', bundleClient);
+adminBundler.on('update', bundleAdmin);
+
+gulp.task('browserifyClient', bundleClient);
+gulp.task('browserifyAdmin', bundleAdmin);
 
 
 gulp.task('lint', function () {
@@ -49,5 +61,5 @@ gulp.task('test', function () {
 });
 
 
-gulp.task('default', [ 'browserify' ]);
+gulp.task('default', [ 'browserifyClient', 'browserifyAdmin' ]);
 

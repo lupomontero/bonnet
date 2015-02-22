@@ -22,7 +22,7 @@ Handlebars.registerHelper('fromNow', function (date) {
 
 module.exports = Backbone.View.extend({
 
-  templatePath: '/templates',
+  templatePath: 'templates',
   templateName: null,
   template: null,
   locals: {},
@@ -94,6 +94,7 @@ module.exports = Backbone.View.extend({
     var that = this;
     var app = that.options.app || {};
     var cache = app.templates || {};
+    var prefix = app.options.routePrefix || '';
 
     if (cache.hasOwnProperty(name)) {
       return cb(null, cache[name]);

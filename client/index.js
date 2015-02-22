@@ -11,7 +11,8 @@ Backbone.$ = window.jQuery;
 
 
 var defaults = { 
-  remote: window.location.origin + '/_api' 
+  remote: window.location.origin + '/_api',
+  routePrefix: ''
 };
 
 
@@ -28,12 +29,14 @@ var Bonnet = window.Bonnet = function (options) {
   bonnet.task = require('./task')(bonnet, settings);
 
   bonnet.start = function (cb) {
+    cb = cb || noop;
     async.applyEachSeries([
       async.apply(bonnet.account.init),
       async.apply(bonnet.store.init),
     ], function (err) {
       if (err) { return console.error(err); }
-      Backbone.history.start({ pushState: true });
+      App.prototype.start.call(bonnet);
+      cb();
     });
   };
 

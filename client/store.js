@@ -3,28 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
 var PouchDB = require('pouchdb');
 var _ = require('lodash');
-
-
-var uid = (function () {
-  var chars = '0123456789abcdefghijklmnopqrstuvwxyz'.split('');
-  return function (length) {
-    var id = '';
-    var radix = chars.length;
-
-    // default uuid length to 7
-    if (length === undefined) {
-      length = 7;
-    }
-
-    for (var i = 0; i < length; i++) {
-      var rand = Math.random() * radix;
-      var char = chars[Math.floor(rand)];
-      id += String(char).charAt(0);
-    }
-
-    return id;
-  };
-}());
+var uid = require('../lib/uid');
 
 
 function assertDocType(type) {
@@ -33,6 +12,10 @@ function assertDocType(type) {
 
 function parse(doc) {
   return _.extend({ id: doc._id.split('/')[1] }, _.omit(doc, [ '_id' ]));
+}
+
+function toJSON(doc) {
+  return _.extend({ _id: doc.type + '/' + doc.id }, _.omit(doc, [ 'id' ]));
 }
 
 
@@ -85,7 +68,7 @@ module.exports = function (bonnet, settings) {
 
   store.remove = function (type, id) {
     return store.find(type, id).then(function (doc) {
-      return local.remove(doc);
+      return local.remove(toJSON(doc));
     });
   };
 

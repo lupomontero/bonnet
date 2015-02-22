@@ -1,17 +1,20 @@
+var path = require('path');
 var _ = require('lodash');
 var env = process.env;
 
+
 module.exports = function (argv) {
 
-  return _.extend({}, _.omit(argv, [ '_' ]), {
+  return _.extend({}, {
     port: 3001,
-    dir: process.cwd(),
+    cwd: process.cwd(),
+    data: path.join(process.cwd(), 'data'),
     couchdb: {
       url: env.BONNET_COUCH_URL,
       user: env.BONNET_COUCH_USER,
       pass: env.BONNET_COUCH_PASS
     }
-  });
+  }, _.omit(argv, [ '_' ]))
 
 };
 
