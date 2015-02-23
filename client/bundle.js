@@ -72,19 +72,20 @@ function userDocUrl(email) {
 }
 
 
-function getBonnetId() {
-  return bonnet.account.session.userCtx.roles.reduce(function (memo, item) {
-    var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
-    if (matches && matches[1]) { return matches[1]; }
-    return memo;
-  }, null);
-}
-
-
 module.exports = function (bonnet, settings) {
 
   var account = new EventEmitter();
   var hasInit = false;
+
+
+  account.bonnetId = function () {
+    return account.session.userCtx.roles.reduce(function (memo, item) {
+      var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
+      if (matches && matches[1]) { return matches[1]; }
+      return memo;
+    }, null);
+  },
+
 
   account.signUp = function (email, pass) {
     var bonnetId = uid();
@@ -100,6 +101,7 @@ module.exports = function (bonnet, settings) {
     return couch.put(userDocUrl(email), userDoc);
   };
 
+
   account.signIn = function (email, pass) {
     return couch.post('/_session', {
       name: email,
@@ -109,15 +111,20 @@ module.exports = function (bonnet, settings) {
     });
   };
 
+
   account.signOut = function () {
     return couch.del('/_session');
   };
 
+
   account.changePassword = function () {};
+
 
   account.changeUsername = function () {};
 
+
   account.resetPassword = function () {};
+
 
   account.destroy = function () {
     //bonnet.store.local.destroy();
@@ -132,10 +139,12 @@ module.exports = function (bonnet, settings) {
     // Server should remove user db
   };
 
+
   account.isSignedIn = function () {
     var userCtx = (account.session || {}).userCtx || {};
     return (typeof userCtx.name === 'string' && userCtx.name.length > 0);
   };
+
 
   account.init = function (cb) {
     cb = cb || noop;
@@ -159,6 +168,7 @@ module.exports = function (bonnet, settings) {
       cb(err);
     });
   };
+
 
   return account;
 
@@ -453,46 +463,54 @@ module.exports = function (bonnet, settings) {
   var store = new EventEmitter();
   var local = store.local = new PouchDB('__bonnet');
 
-  function emitSyncEvent(eventName, data) {
-    store.emit('sync', eventName, data);
-    store.emit('sync:' + eventName, data);
+  function emitEvent(type, eventName, data) {
+    store.emit(type, eventName, data);
+    store.emit(type + ':' + eventName, data);
+  }
+
+  function push() {
+    if (!store.remoteUrl) { return; }
+    emitEvent('push', 'start');
+    local.replicate.to(store.remoteUrl)
+      .on('change', emitEvent.bind(null, 'push', 'change'))
+      .on('complete', emitEvent.bind(null, 'push', 'complete'))
+      .on('error', emitEvent.bind(null, 'push', 'error'));
   }
 
   function sync() {
     if (!store.remoteUrl) { return; }
-    emitSyncEvent('start');
+    emitEvent('sync', 'start');
     local.replicate.sync(store.remoteUrl)
-      .on('change', emitSyncEvent.bind(null, 'change'))
-      .on('complete', emitSyncEvent.bind(null, 'complete'))
-      .on('error', emitSyncEvent.bind(null, 'error'));
+      .on('change', emitEvent.bind(null, 'sync', 'change'))
+      .on('complete', emitEvent.bind(null, 'sync', 'complete'))
+      .on('error', emitEvent.bind(null, 'sync', 'error'));
   }
 
   function initRemote() {
-    var bonnetId = account.session.userCtx.roles.reduce(function (memo, item) {
-      var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
-      if (matches && matches[1]) { return matches[1]; }
-      return memo;
-    }, null);
-
+    if (account.isSignedIn()) {
+      initRemote();
+    }
+    var bonnetId = account.bonnetId();
     store.remoteUrl = settings.remote + '/' + encodeURIComponent('user/' + bonnetId);
     store.remote = new PouchDB(store.remoteUrl);
     sync();
   }
 
-  account.on('init', function () {
-    if (account.isSignedIn()) {
-      initRemote();
-    }
+  account.on({
+    init: initRemote,
+    signin: initRemote,
+    signout: initRemote
   });
 
-  account.on('signin', function () {
-    initRemote();
-  });
 
-  account.on('signout', function () {
-  
-  });
+  //
+  // Public API
+  //
 
+
+  //
+  // Find object by id.
+  //
   store.find = function (type, id) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
@@ -502,6 +520,10 @@ module.exports = function (bonnet, settings) {
     });
   };
 
+
+  //
+  // Find all objects of a given type.
+  //
   store.findAll = function (type) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
@@ -517,6 +539,10 @@ module.exports = function (bonnet, settings) {
     });
   };
 
+
+  //
+  // Add object to store.
+  //
   store.add = function (type, attrs) {
     assertDocType(type);
     var doc = _.extend({}, attrs, {
@@ -532,25 +558,37 @@ module.exports = function (bonnet, settings) {
     });
   };
 
+
+  //
+  // Update object in store.
+  //
   store.update = function (type, id, attrs) {
     assertDocType(type);
     // ...
   };
 
+
+  //
+  // Remove object from store.
+  //
   store.remove = function (type, id) {
     return store.find(type, id).then(function (doc) {
       return local.remove(toJSON(doc));
     });
   };
 
+  //
+  // Remove all objects of given type from store.
+  //
   store.removeAll = function (type) {
+    // ...
   };
 
-  store.init = function (cb) {
-    //var userCtx = account.session.userCtx;
-    //console.log(userCtx);
-    //console.log('initialise store...');
 
+  //
+  // Initialise store.
+  //
+  store.init = function (cb) {
     var localChanges = local.changes({ 
       since: 'now', 
       live: true,
@@ -558,7 +596,7 @@ module.exports = function (bonnet, settings) {
     });
 
     localChanges.on('change', function (change) {
-      sync();
+      push();
       if (change.deleted) {
         store.emit('remove', change.doc);
       }
@@ -567,6 +605,7 @@ module.exports = function (bonnet, settings) {
 
     cb();
   };
+
 
   return store;
 
