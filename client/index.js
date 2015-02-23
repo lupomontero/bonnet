@@ -2,6 +2,7 @@ var _ = require('lodash');
 var async = require('async');
 var Backbone = require('backbone');
 var Handlebars = require('handlebars');
+var moment = require('moment');
 var App = require('./app');
 var noop = function () {};
 
@@ -54,4 +55,5 @@ Bonnet.$ = window.jQuery;
 Bonnet._ = _;
 Bonnet.Backbone = Backbone;
 Bonnet.Handlebars = Handlebars;
+Bonnet.moment = moment;
 

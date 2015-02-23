@@ -5,6 +5,20 @@ var uid = require('../lib/uid');
 var noop = function () {};
 
 
+function userDocUrl(email) {
+  return '/_users/' + encodeURIComponent('org.couchdb.user:' + email);
+}
+
+
+function getBonnetId() {
+  return bonnet.account.session.userCtx.roles.reduce(function (memo, item) {
+    var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
+    if (matches && matches[1]) { return matches[1]; }
+    return memo;
+  }, null);
+}
+
+
 module.exports = function (bonnet, settings) {
 
   var account = new EventEmitter();
@@ -21,7 +35,7 @@ module.exports = function (bonnet, settings) {
       database: 'user/' + bonnetId
     };
 
-    return couch.put('/_users/org.couchdb.user:' + email, userDoc);
+    return couch.put(userDocUrl(email), userDoc);
   };
 
   account.signIn = function (email, pass) {
@@ -43,6 +57,19 @@ module.exports = function (bonnet, settings) {
 
   account.resetPassword = function () {};
 
+  account.destroy = function () {
+    //bonnet.store.local.destroy();
+    var userCtx = (bonnet.account.session || {}).userCtx || {};
+    var url = userDocUrl(userCtx.name);
+    console.log(url);
+    couch.get(url, function (err, data) {
+      console.log(err, data);
+    });
+    // Destroy local db
+    // Delete user from remote db
+    // Server should remove user db
+  };
+
   account.isSignedIn = function () {
     var userCtx = (account.session || {}).userCtx || {};
     return (typeof userCtx.name === 'string' && userCtx.name.length > 0);
@@ -50,13 +77,6 @@ module.exports = function (bonnet, settings) {
 
   account.init = function (cb) {
     cb = cb || noop;
-    //var state = localStorage.getItem('_bonnet_state');
-    //if (state) {
-    //  try { state = JSON.parse(state); } catch (err) {}
-    //}
-    //if (!state) {
-    //  state = {};
-    //}
 
     var wasSignedIn = account.isSignedIn();
 

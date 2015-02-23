@@ -3,6 +3,7 @@ var _ = require('lodash');
 var async = require('async');
 var Backbone = require('backbone');
 var Handlebars = require('handlebars');
+var moment = require('moment');
 var App = require('./app');
 var noop = function () {};
 
@@ -55,14 +56,29 @@ Bonnet.$ = window.jQuery;
 Bonnet._ = _;
 Bonnet.Backbone = Backbone;
 Bonnet.Handlebars = Handlebars;
+Bonnet.moment = moment;
 
 
-},{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
+},{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
 var couch = require('../lib/couch')('/_api');
 var uid = require('../lib/uid');
 var noop = function () {};
+
+
+function userDocUrl(email) {
+  return '/_users/' + encodeURIComponent('org.couchdb.user:' + email);
+}
+
+
+function getBonnetId() {
+  return bonnet.account.session.userCtx.roles.reduce(function (memo, item) {
+    var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
+    if (matches && matches[1]) { return matches[1]; }
+    return memo;
+  }, null);
+}
 
 
 module.exports = function (bonnet, settings) {
@@ -81,7 +97,7 @@ module.exports = function (bonnet, settings) {
       database: 'user/' + bonnetId
     };
 
-    return couch.put('/_users/org.couchdb.user:' + email, userDoc);
+    return couch.put(userDocUrl(email), userDoc);
   };
 
   account.signIn = function (email, pass) {
@@ -103,6 +119,19 @@ module.exports = function (bonnet, settings) {
 
   account.resetPassword = function () {};
 
+  account.destroy = function () {
+    //bonnet.store.local.destroy();
+    var userCtx = (bonnet.account.session || {}).userCtx || {};
+    var url = userDocUrl(userCtx.name);
+    console.log(url);
+    couch.get(url, function (err, data) {
+      console.log(err, data);
+    });
+    // Destroy local db
+    // Delete user from remote db
+    // Server should remove user db
+  };
+
   account.isSignedIn = function () {
     var userCtx = (account.session || {}).userCtx || {};
     return (typeof userCtx.name === 'string' && userCtx.name.length > 0);
@@ -110,13 +139,6 @@ module.exports = function (bonnet, settings) {
 
   account.init = function (cb) {
     cb = cb || noop;
-    //var state = localStorage.getItem('_bonnet_state');
-    //if (state) {
-    //  try { state = JSON.parse(state); } catch (err) {}
-    //}
-    //if (!state) {
-    //  state = {};
-    //}
 
     var wasSignedIn = account.isSignedIn();
 
@@ -552,14 +574,28 @@ module.exports = function (bonnet, settings) {
 
 
 },{"../lib/uid":"/Users/lupo/work/lupomontero/bonnet/lib/uid.js","assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","pouchdb":"/Users/lupo/work/lupomontero/bonnet/node_modules/pouchdb/lib/index.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/task.js":[function(require,module,exports){
+var EventEmitter = require('events').EventEmitter;
+
 module.exports = function (bonnet) {
 
-  return {};
+  var task = new EventEmitter();
+
+  task.start = function (type, attrs) {};
+
+  task.abort = function (type, id) {};
+
+  task.restart = function (type, id, extraAttrs) {};
+
+  task.abortAll = function () {};
+
+  task.restartAll = function () {};
+
+  return task;
 
 };
 
 
-},{}],"/Users/lupo/work/lupomontero/bonnet/client/view.js":[function(require,module,exports){
+},{"events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js"}],"/Users/lupo/work/lupomontero/bonnet/client/view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 var Handlebars = require('handlebars');
