@@ -442,6 +442,7 @@ var Promise = require('promise');
 var PouchDB = require('pouchdb');
 var _ = require('lodash');
 var uid = require('../lib/uid');
+var noop = function () {};
 
 
 function assertDocType(type) {
@@ -461,7 +462,6 @@ module.exports = function (bonnet, settings) {
 
   var account = bonnet.account;
   var store = new EventEmitter();
-  var local = store.local = new PouchDB('__bonnet');
 
   function emitEvent(type, eventName, data) {
     store.emit(type, eventName, data);
@@ -469,42 +469,34 @@ module.exports = function (bonnet, settings) {
   }
 
   function push() {
-    if (!store.remoteUrl) { return; }
+    if (!store.remote) { return; }
     emitEvent('push', 'start');
-    local.replicate.to(store.remoteUrl)
+    store.local.replicate.to(store.remote)
       .on('change', emitEvent.bind(null, 'push', 'change'))
       .on('complete', emitEvent.bind(null, 'push', 'complete'))
       .on('error', emitEvent.bind(null, 'push', 'error'));
   }
 
-  function sync() {
-    if (!store.remoteUrl) { return; }
+  function sync(cb) {
+    cb = cb || noop;
+    if (!store.remoteUrl) { return cb(); }
     emitEvent('sync', 'start');
-    local.replicate.sync(store.remoteUrl)
+    store.remote.replicate.sync(store.local)
+      .on('error', emitEvent.bind(null, 'sync', 'error'))
       .on('change', emitEvent.bind(null, 'sync', 'change'))
-      .on('complete', emitEvent.bind(null, 'sync', 'complete'))
-      .on('error', emitEvent.bind(null, 'sync', 'error'));
+      .on('complete', function (data) {
+        store.lastSync = data.push.end_time;
+        if (data.pull.end_time > store.lastSync) {
+          store.lastSync = data.pull.end_time;
+        }
+        emitEvent('sync', 'complete', data)      
+        cb();
+      });
   }
-
-  function initRemote() {
-    if (account.isSignedIn()) {
-      initRemote();
-    }
-    var bonnetId = account.bonnetId();
-    store.remoteUrl = settings.remote + '/' + encodeURIComponent('user/' + bonnetId);
-    store.remote = new PouchDB(store.remoteUrl);
-    sync();
-  }
-
-  account.on({
-    init: initRemote,
-    signin: initRemote,
-    signout: initRemote
-  });
 
 
   //
-  // Public API
+  // Store API
   //
 
 
@@ -514,7 +506,7 @@ module.exports = function (bonnet, settings) {
   store.find = function (type, id) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
-      local.get(type + '/' + id).then(function (doc) {
+      store.local.get(type + '/' + id).then(function (doc) {
         resolve(parse(doc));
       }, reject);
     });
@@ -527,7 +519,7 @@ module.exports = function (bonnet, settings) {
   store.findAll = function (type) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
-      local.allDocs({
+      store.local.allDocs({
         include_docs: true,
         startkey: type + '/',
         endkey: type + '0'
@@ -551,7 +543,7 @@ module.exports = function (bonnet, settings) {
       type: type
     });
     return new Promise(function (resolve, reject) {
-      local.put(doc).then(function (data) {
+      store.local.put(doc).then(function (data) {
         doc._rev = data.rev;
         resolve(parse(doc));
       }, reject);
@@ -573,7 +565,7 @@ module.exports = function (bonnet, settings) {
   //
   store.remove = function (type, id) {
     return store.find(type, id).then(function (doc) {
-      return local.remove(toJSON(doc));
+      return store.local.remove(toJSON(doc));
     });
   };
 
@@ -589,23 +581,44 @@ module.exports = function (bonnet, settings) {
   // Initialise store.
   //
   store.init = function (cb) {
-    var localChanges = local.changes({ 
-      since: 'now', 
-      live: true,
-      include_docs: true
-    });
+    cb = cb || noop;
 
-    localChanges.on('change', function (change) {
-      push();
-      if (change.deleted) {
-        store.emit('remove', change.doc);
-      }
-      store.emit('change', change);
-    });
+    var bonnetId = account.bonnetId() || '__bonnet_anon';
 
-    cb();
+    store.local = new PouchDB(bonnetId);
+
+    function listenToLocalChanges() {
+      var localChanges = store.local.changes({ 
+        since: 'now', 
+        live: true,
+        include_docs: true
+      });
+
+      localChanges.on('change', function (change) {
+        if (change.deleted) {
+          store.emit('remove', change.doc);
+        }
+
+        store.emit('change', change);
+        push();
+      });
+
+      cb();
+    }
+
+    if (account.isSignedIn()) {
+      store.remoteUrl = settings.remote + '/' + encodeURIComponent('user/' + bonnetId);
+      store.remote = new PouchDB(store.remoteUrl);
+      sync(listenToLocalChanges);
+    } else {
+      listenToLocalChanges();
+    }
   };
 
+
+  [ 'signin', 'signout' ].forEach(function (eventName) {
+    account.on(eventName, store.init.bind(store));
+  });
 
   return store;
 
