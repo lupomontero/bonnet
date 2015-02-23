@@ -60,25 +60,46 @@ Bonnet.Handlebars = Handlebars;
 },{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
+var couch = require('../lib/couch')('/_api');
+var uid = require('../lib/uid');
+var noop = function () {};
 
 
 module.exports = function (bonnet, settings) {
 
   var account = new EventEmitter();
+  var hasInit = false;
 
   account.signUp = function (email, pass) {
-    return new Promise(function (resolve, resject) {
-    
+    var bonnetId = uid();
+    var userDoc = {
+      name: email,
+      password: pass,
+      roles: [],
+      type: 'user',
+      bonnetId: bonnetId,
+      database: 'user/' + bonnetId
+    };
+
+    return couch.put('/_users/org.couchdb.user:' + email, userDoc);
+  };
+
+  account.signIn = function (email, pass) {
+    return couch.post('/_session', {
+      name: email,
+      password: pass
+    }).then(function () {
+      return account.init();
     });
   };
 
-  account.signIn = function () {};
+  account.signOut = function () {
+    return couch.del('/_session');
+  };
 
   account.changePassword = function () {};
 
   account.changeUsername = function () {};
-
-  account.signOut = function () {};
 
   account.resetPassword = function () {};
 
@@ -88,23 +109,32 @@ module.exports = function (bonnet, settings) {
   };
 
   account.init = function (cb) {
-    var state = localStorage.getItem('_bonnet_state');
-    if (state) {
-      try { state = JSON.parse(state); } catch (err) {}
-    }
-    if (!state) {
-      state = {};
-    }
+    cb = cb || noop;
+    //var state = localStorage.getItem('_bonnet_state');
+    //if (state) {
+    //  try { state = JSON.parse(state); } catch (err) {}
+    //}
+    //if (!state) {
+    //  state = {};
+    //}
 
-    $.ajax({
-      type: 'GET',
-      url: '/_api/_session',
-      dataType: 'json'
-    }).then(function (data) {
+    var wasSignedIn = account.isSignedIn();
+
+    return couch.get('/_session').then(function (data) {
       account.session = data;
+      var isSignedIn = account.isSignedIn();
+      if (!hasInit) {
+        hasInit = true;
+        account.emit('init');
+      } else if (!wasSignedIn && isSignedIn) {
+        account.emit('signin');
+      } else if (wasSignedIn && !isSignedIn) {
+        account.emit('signout');
+      }
       cb();
     }, function (err) {
       console.error(err);
+      cb(err);
     });
   };
 
@@ -113,7 +143,7 @@ module.exports = function (bonnet, settings) {
 };
 
 
-},{"events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
+},{"../lib/couch":"/Users/lupo/work/lupomontero/bonnet/lib/couch.js","../lib/uid":"/Users/lupo/work/lupomontero/bonnet/lib/uid.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 
@@ -187,6 +217,21 @@ module.exports = Backbone.View.extend({
     that.trigger('region:view', region);
   },
 
+  overrideLink: function (e) {
+    var app = this.model;
+    var href = $(e.currentTarget).attr('href');
+    var routeStr = href.substr(1);
+    if (href.charAt(0) === '#') { return; }
+    var route = _.find(_.keys(app.routes), function (name) {
+      return app._routeToRegExp(name).test(routeStr);
+    });
+    // We test for type string, as empty string is allowed and falsy...
+    if (typeof route === 'string') {
+      e.preventDefault();
+      app.navigate(routeStr, { trigger: true });
+    }
+  }
+
 });
 
 
@@ -202,10 +247,12 @@ module.exports = Backbone.Router.extend({
     this.options = opt;
     Backbone.Router.prototype.initialize.call(app, opt);
     app.view = new AppView({ model: app });
+    if (!app.routes) { app.routes = {}; }
   },
 
   route: function (route, name, cb) {
     var prefix = this.options.routePrefix || '';
+    this.routes[route] = cb;
     return Backbone.Router.prototype.route.call(this, prefix + route, name, cb);
   },
 
@@ -383,7 +430,46 @@ module.exports = function (bonnet, settings) {
   var account = bonnet.account;
   var store = new EventEmitter();
   var local = store.local = new PouchDB('__bonnet');
-  var remote = store.remote = new PouchDB(settings.remote);
+
+  function emitSyncEvent(eventName, data) {
+    store.emit('sync', eventName, data);
+    store.emit('sync:' + eventName, data);
+  }
+
+  function sync() {
+    if (!store.remoteUrl) { return; }
+    emitSyncEvent('start');
+    local.replicate.sync(store.remoteUrl)
+      .on('change', emitSyncEvent.bind(null, 'change'))
+      .on('complete', emitSyncEvent.bind(null, 'complete'))
+      .on('error', emitSyncEvent.bind(null, 'error'));
+  }
+
+  function initRemote() {
+    var bonnetId = account.session.userCtx.roles.reduce(function (memo, item) {
+      var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
+      if (matches && matches[1]) { return matches[1]; }
+      return memo;
+    }, null);
+
+    store.remoteUrl = settings.remote + '/' + encodeURIComponent('user/' + bonnetId);
+    store.remote = new PouchDB(store.remoteUrl);
+    sync();
+  }
+
+  account.on('init', function () {
+    if (account.isSignedIn()) {
+      initRemote();
+    }
+  });
+
+  account.on('signin', function () {
+    initRemote();
+  });
+
+  account.on('signout', function () {
+  
+  });
 
   store.find = function (type, id) {
     assertDocType(type);
@@ -397,7 +483,11 @@ module.exports = function (bonnet, settings) {
   store.findAll = function (type) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
-      local.allDocs({ include_docs: true }).then(function (data) {
+      local.allDocs({
+        include_docs: true,
+        startkey: type + '/',
+        endkey: type + '0'
+      }).then(function (data) {
         resolve(data.rows.map(function (row) {
           return parse(row.doc);
         }));
@@ -435,9 +525,9 @@ module.exports = function (bonnet, settings) {
   };
 
   store.init = function (cb) {
-    var userCtx = account.session.userCtx;
-    console.log(userCtx);
-    console.log('initialise store...');
+    //var userCtx = account.session.userCtx;
+    //console.log(userCtx);
+    //console.log('initialise store...');
 
     var localChanges = local.changes({ 
       since: 'now', 
@@ -446,7 +536,7 @@ module.exports = function (bonnet, settings) {
     });
 
     localChanges.on('change', function (change) {
-      console.log('change', change);
+      sync();
       if (change.deleted) {
         store.emit('remove', change.doc);
       }
@@ -630,7 +720,107 @@ module.exports = Backbone.View.extend({
 });
 
 
-},{"backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/uid.js":[function(require,module,exports){
+},{"backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/couch.js":[function(require,module,exports){
+var _ = require('lodash');
+var noop = function () {};
+
+
+function createApi(opt) {
+
+  var baseurl = opt.url;
+
+  function req(/* method, path, params, data, cb */) {
+    var args = _.toArray(arguments);
+    var method = args.shift();
+    var path = args.shift();
+    var cb = (typeof args[args.length - 1] === 'function') ? args.pop() : noop;
+
+    // Add leading slash if needed.
+    if (path.charAt(0) !== '/') { path = '/' + path; }
+
+    var reqOpt = {
+      type: method,
+      url: opt.url + path,
+      dataType: 'json',
+      error: function (xhr) { 
+        var err = new Error(xhr.responseJSON.error);
+        err.statusCode = xhr.status;
+        err.reason = xhr.responseJSON.reason;
+        cb(err); 
+      },
+      success: function (data) {
+        cb(null, data);
+      }
+    };
+
+    if (opt.user && opt.pass) {
+      reqOpt.username = opt.user;
+      reqOpt.password = opt.pass;
+    }
+
+    if ([ 'PUT', 'POST' ].indexOf(method) >= 0) {
+      var data = args.pop();
+      if (data) {
+        reqOpt.data = JSON.stringify(data);
+        reqOpt.contentType = 'application/json';
+      }
+    }
+
+    if (args.length) {
+      reqOpt.url += _.reduce(args.shift(), function (memo, v, k) {
+        return memo += encodeURIComponent(k) + '=' + encodeURIComponent(JSON.stringify(v));
+      }, '?');
+    }
+
+    return $.ajax(reqOpt, cb);
+  }
+
+  return {
+    get: req.bind(null, 'GET'),
+    post: req.bind(null, 'POST'),
+    put: req.bind(null, 'PUT'),
+    del: req.bind(null, 'DELETE'),
+  };
+
+}
+
+
+module.exports = function (opt) {
+
+  if (typeof opt === 'string') {
+    opt = { url: opt }
+  }
+
+  var api = createApi(opt);
+
+  api.db = function (dbName) {
+    var db = createApi(_.extend({}, opt, {
+      url: opt.url + '/' + encodeURIComponent(dbName)
+    }));
+
+    db.view = function () {};
+
+    return db;
+  };
+
+  api.isAdminParty = function (cb) {
+    api.get('/_users/_all_docs', function (err, data) {
+      if (err && err.statusCode === 401) {
+        cb(null, false);
+      } else if (err) {
+        cb(err);
+      } else {
+        cb(null, true);
+      }
+    });
+  };
+
+  return api;
+
+};
+
+
+},{"lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/uid.js":[function(require,module,exports){
 var chars = '0123456789abcdefghijklmnopqrstuvwxyz'.split('');
 
 module.exports = function (length) {

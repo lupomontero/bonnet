@@ -71,5 +71,20 @@ module.exports = Backbone.View.extend({
     that.trigger('region:view', region);
   },
 
+  overrideLink: function (e) {
+    var app = this.model;
+    var href = $(e.currentTarget).attr('href');
+    var routeStr = href.substr(1);
+    if (href.charAt(0) === '#') { return; }
+    var route = _.find(_.keys(app.routes), function (name) {
+      return app._routeToRegExp(name).test(routeStr);
+    });
+    // We test for type string, as empty string is allowed and falsy...
+    if (typeof route === 'string') {
+      e.preventDefault();
+      app.navigate(routeStr, { trigger: true });
+    }
+  }
+
 });
 

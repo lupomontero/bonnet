@@ -1,4 +1,4 @@
-var Couch = require('../couch');
+var Couch = require('../../lib/couch');
 
 
 module.exports = Bonnet.View.extend({

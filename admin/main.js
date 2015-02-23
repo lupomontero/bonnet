@@ -2,7 +2,7 @@ var Backbone = require('backbone');
 // Have to tell Backbone where to find jQuery
 Backbone.$ = window.jQuery;
 
-var Couch = require('./couch');
+var Couch = require('../lib/couch');
 var App = require('../client/app');
 var opt = { routePrefix: '_admin/' };
 var app = new App(opt);

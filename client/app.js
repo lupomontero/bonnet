@@ -9,10 +9,12 @@ module.exports = Backbone.Router.extend({
     this.options = opt;
     Backbone.Router.prototype.initialize.call(app, opt);
     app.view = new AppView({ model: app });
+    if (!app.routes) { app.routes = {}; }
   },
 
   route: function (route, name, cb) {
     var prefix = this.options.routePrefix || '';
+    this.routes[route] = cb;
     return Backbone.Router.prototype.route.call(this, prefix + route, name, cb);
   },
 

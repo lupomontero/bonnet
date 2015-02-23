@@ -24,7 +24,46 @@ module.exports = function (bonnet, settings) {
   var account = bonnet.account;
   var store = new EventEmitter();
   var local = store.local = new PouchDB('__bonnet');
-  var remote = store.remote = new PouchDB(settings.remote);
+
+  function emitSyncEvent(eventName, data) {
+    store.emit('sync', eventName, data);
+    store.emit('sync:' + eventName, data);
+  }
+
+  function sync() {
+    if (!store.remoteUrl) { return; }
+    emitSyncEvent('start');
+    local.replicate.sync(store.remoteUrl)
+      .on('change', emitSyncEvent.bind(null, 'change'))
+      .on('complete', emitSyncEvent.bind(null, 'complete'))
+      .on('error', emitSyncEvent.bind(null, 'error'));
+  }
+
+  function initRemote() {
+    var bonnetId = account.session.userCtx.roles.reduce(function (memo, item) {
+      var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
+      if (matches && matches[1]) { return matches[1]; }
+      return memo;
+    }, null);
+
+    store.remoteUrl = settings.remote + '/' + encodeURIComponent('user/' + bonnetId);
+    store.remote = new PouchDB(store.remoteUrl);
+    sync();
+  }
+
+  account.on('init', function () {
+    if (account.isSignedIn()) {
+      initRemote();
+    }
+  });
+
+  account.on('signin', function () {
+    initRemote();
+  });
+
+  account.on('signout', function () {
+  
+  });
 
   store.find = function (type, id) {
     assertDocType(type);
@@ -38,7 +77,11 @@ module.exports = function (bonnet, settings) {
   store.findAll = function (type) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
-      local.allDocs({ include_docs: true }).then(function (data) {
+      local.allDocs({
+        include_docs: true,
+        startkey: type + '/',
+        endkey: type + '0'
+      }).then(function (data) {
         resolve(data.rows.map(function (row) {
           return parse(row.doc);
         }));
@@ -76,9 +119,9 @@ module.exports = function (bonnet, settings) {
   };
 
   store.init = function (cb) {
-    var userCtx = account.session.userCtx;
-    console.log(userCtx);
-    console.log('initialise store...');
+    //var userCtx = account.session.userCtx;
+    //console.log(userCtx);
+    //console.log('initialise store...');
 
     var localChanges = local.changes({ 
       since: 'now', 
@@ -87,7 +130,7 @@ module.exports = function (bonnet, settings) {
     });
 
     localChanges.on('change', function (change) {
-      console.log('change', change);
+      sync();
       if (change.deleted) {
         store.emit('remove', change.doc);
       }

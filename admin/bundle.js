@@ -3,7 +3,7 @@ var Backbone = require('backbone');
 // Have to tell Backbone where to find jQuery
 Backbone.$ = window.jQuery;
 
-var Couch = require('./couch');
+var Couch = require('../lib/couch');
 var App = require('../client/app');
 var opt = { routePrefix: '_admin/' };
 var app = new App(opt);
@@ -36,102 +36,7 @@ Couch('/_api').get('/_session', function (err, data) {
 });
 
 
-},{"../client/app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./couch":"/Users/lupo/work/lupomontero/bonnet/admin/couch.js","./views/index":"/Users/lupo/work/lupomontero/bonnet/admin/views/index.js","./views/signin":"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js"}],"/Users/lupo/work/lupomontero/bonnet/admin/couch.js":[function(require,module,exports){
-var _ = require('lodash');
-
-
-function createApi(opt) {
-
-  var baseurl = opt.url;
-
-  function req(/* method, path, params, data, cb */) {
-    var args = _.toArray(arguments);
-    var method = args.shift();
-    var path = args.shift();
-    var cb = (typeof args[args.length - 1] === 'function') ? args.pop() : noop;
-
-    // Add leading slash if needed.
-    if (path.charAt(0) !== '/') { path = '/' + path; }
-
-    var reqOpt = {
-      type: method,
-      url: opt.url + path,
-      dataType: 'json',
-      error: function (xhr) { 
-        var err = new Error(xhr.responseJSON.error);
-        err.statusCode = xhr.status;
-        err.reason = xhr.responseJSON.reason;
-        cb(err); 
-      },
-      success: function (data) {
-        cb(null, data);
-      }
-    };
-
-    if (opt.user && opt.pass) {
-      reqOpt.username = opt.user;
-      reqOpt.password = opt.pass;
-    }
-
-    if ([ 'PUT', 'POST' ].indexOf(method) >= 0) {
-      reqOpt.data = args.pop();
-    }
-
-    if (args.length) {
-      reqOpt.url += _.reduce(args.shift(), function (memo, v, k) {
-        return memo += encodeURIComponent(k) + '=' + encodeURIComponent(JSON.stringify(v));
-      }, '?');
-    }
-
-    return $.ajax(reqOpt, cb);
-  }
-
-  return {
-    get: req.bind(null, 'GET'),
-    post: req.bind(null, 'POST'),
-    put: req.bind(null, 'PUT'),
-    del: req.bind(null, 'DELETE'),
-  };
-
-}
-
-
-module.exports = function (opt) {
-
-  if (typeof opt === 'string') {
-    opt = { url: opt }
-  }
-
-  var api = createApi(opt);
-
-  api.db = function (dbName) {
-    var db = createApi(_.extend({}, opt, {
-      url: opt.url + '/' + encodeURIComponent(dbName)
-    }));
-
-    db.view = function () {};
-
-    return db;
-  };
-
-  api.isAdminParty = function (cb) {
-    api.get('/_users/_all_docs', function (err, data) {
-      if (err && err.statusCode === 401) {
-        cb(null, false);
-      } else if (err) {
-        cb(err);
-      } else {
-        cb(null, true);
-      }
-    });
-  };
-
-  return api;
-
-};
-
-
-},{"lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/admin/views/index.js":[function(require,module,exports){
+},{"../client/app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","../lib/couch":"/Users/lupo/work/lupomontero/bonnet/lib/couch.js","./views/index":"/Users/lupo/work/lupomontero/bonnet/admin/views/index.js","./views/signin":"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js"}],"/Users/lupo/work/lupomontero/bonnet/admin/views/index.js":[function(require,module,exports){
 module.exports = Bonnet.View.extend({
 
   className: 'container',
@@ -146,7 +51,7 @@ module.exports = Bonnet.View.extend({
 
 
 },{}],"/Users/lupo/work/lupomontero/bonnet/admin/views/signin.js":[function(require,module,exports){
-var Couch = require('../couch');
+var Couch = require('../../lib/couch');
 
 
 module.exports = Bonnet.View.extend({
@@ -180,7 +85,7 @@ module.exports = Bonnet.View.extend({
 });
 
 
-},{"../couch":"/Users/lupo/work/lupomontero/bonnet/admin/couch.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
+},{"../../lib/couch":"/Users/lupo/work/lupomontero/bonnet/lib/couch.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 
@@ -254,6 +159,21 @@ module.exports = Backbone.View.extend({
     that.trigger('region:view', region);
   },
 
+  overrideLink: function (e) {
+    var app = this.model;
+    var href = $(e.currentTarget).attr('href');
+    var routeStr = href.substr(1);
+    if (href.charAt(0) === '#') { return; }
+    var route = _.find(_.keys(app.routes), function (name) {
+      return app._routeToRegExp(name).test(routeStr);
+    });
+    // We test for type string, as empty string is allowed and falsy...
+    if (typeof route === 'string') {
+      e.preventDefault();
+      app.navigate(routeStr, { trigger: true });
+    }
+  }
+
 });
 
 
@@ -269,10 +189,12 @@ module.exports = Backbone.Router.extend({
     this.options = opt;
     Backbone.Router.prototype.initialize.call(app, opt);
     app.view = new AppView({ model: app });
+    if (!app.routes) { app.routes = {}; }
   },
 
   route: function (route, name, cb) {
     var prefix = this.options.routePrefix || '';
+    this.routes[route] = cb;
     return Backbone.Router.prototype.route.call(this, prefix + route, name, cb);
   },
 
@@ -335,7 +257,107 @@ module.exports = Backbone.Router.extend({
 });
 
 
-},{"./app-view":"/Users/lupo/work/lupomontero/bonnet/client/app-view.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js":[function(require,module,exports){
+},{"./app-view":"/Users/lupo/work/lupomontero/bonnet/client/app-view.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/lib/couch.js":[function(require,module,exports){
+var _ = require('lodash');
+var noop = function () {};
+
+
+function createApi(opt) {
+
+  var baseurl = opt.url;
+
+  function req(/* method, path, params, data, cb */) {
+    var args = _.toArray(arguments);
+    var method = args.shift();
+    var path = args.shift();
+    var cb = (typeof args[args.length - 1] === 'function') ? args.pop() : noop;
+
+    // Add leading slash if needed.
+    if (path.charAt(0) !== '/') { path = '/' + path; }
+
+    var reqOpt = {
+      type: method,
+      url: opt.url + path,
+      dataType: 'json',
+      error: function (xhr) { 
+        var err = new Error(xhr.responseJSON.error);
+        err.statusCode = xhr.status;
+        err.reason = xhr.responseJSON.reason;
+        cb(err); 
+      },
+      success: function (data) {
+        cb(null, data);
+      }
+    };
+
+    if (opt.user && opt.pass) {
+      reqOpt.username = opt.user;
+      reqOpt.password = opt.pass;
+    }
+
+    if ([ 'PUT', 'POST' ].indexOf(method) >= 0) {
+      var data = args.pop();
+      if (data) {
+        reqOpt.data = JSON.stringify(data);
+        reqOpt.contentType = 'application/json';
+      }
+    }
+
+    if (args.length) {
+      reqOpt.url += _.reduce(args.shift(), function (memo, v, k) {
+        return memo += encodeURIComponent(k) + '=' + encodeURIComponent(JSON.stringify(v));
+      }, '?');
+    }
+
+    return $.ajax(reqOpt, cb);
+  }
+
+  return {
+    get: req.bind(null, 'GET'),
+    post: req.bind(null, 'POST'),
+    put: req.bind(null, 'PUT'),
+    del: req.bind(null, 'DELETE'),
+  };
+
+}
+
+
+module.exports = function (opt) {
+
+  if (typeof opt === 'string') {
+    opt = { url: opt }
+  }
+
+  var api = createApi(opt);
+
+  api.db = function (dbName) {
+    var db = createApi(_.extend({}, opt, {
+      url: opt.url + '/' + encodeURIComponent(dbName)
+    }));
+
+    db.view = function () {};
+
+    return db;
+  };
+
+  api.isAdminParty = function (cb) {
+    api.get('/_users/_all_docs', function (err, data) {
+      if (err && err.statusCode === 401) {
+        cb(null, false);
+      } else if (err) {
+        cb(err);
+      } else {
+        cb(null, true);
+      }
+    });
+  };
+
+  return api;
+
+};
+
+
+},{"lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js":[function(require,module,exports){
 //     Backbone.js 1.1.2
 
 //     (c) 2010-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors

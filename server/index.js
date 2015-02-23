@@ -1,6 +1,7 @@
 var async = require('async');
 var config = require('./config');
 var installer = require('./installer');
+var account = require('./account');
 var www = require('./www');
 
 
@@ -8,6 +9,7 @@ module.exports = function (argv) {
 
   async.applyEachSeries([
     installer,
+    account,
     www
   ], config(argv), function (err) {
     if (err) {
