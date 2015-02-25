@@ -466,47 +466,28 @@ module.exports = function (bonnet, settings) {
   var account = bonnet.account;
   var store = new EventEmitter();
 
-  function emitEvent(type, eventName, data) {
-    store.emit(type, eventName, data);
-    store.emit(type + ':' + eventName, data);
-  }
-
-  function push(ids) {
-    if (!store.remote) { return; }
-    var replicationOpt = { filter: replicationFilter };
-    if (ids) {
-      if (!_.isArray(ids)) { ids = [ ids ]; }
-      replicationOpt.doc_ids = ids;
-    }
-    emitEvent('push', 'start');
-    store.local.replicate.to(store.remote, replicationOpt)
-      .on('error', emitEvent.bind(null, 'push', 'error'))
-      .on('change', emitEvent.bind(null, 'push', 'change'))
-      .on('complete', emitEvent.bind(null, 'push', 'complete'));
+  function emitSyncEvent(eventName, data) {
+    store.emit('sync', eventName, data);
+    store.emit('sync:' + eventName, data);
   }
 
   function sync(cb) {
     cb = cb || noop;
     if (!store.remoteUrl) { return cb(); }
-    emitEvent('sync', 'start');
     store.remote.replicate.sync(store.local, { filter: replicationFilter })
-      .on('error', emitEvent.bind(null, 'sync', 'error'))
+      .on('error', emitSyncEvent.bind(null, 'error'))
       .on('denied', function (err) {
         console.error('sync denied', err);
       })
-      .on('paused', function () {
-        console.log('sync paused');
-      })
-      .on('active', function () {
-        console.log('sync active');
-      })
-      .on('change', emitEvent.bind(null, 'sync', 'change'))
+      .on('paused', emitSyncEvent.bind(null, 'paused'))
+      .on('active', emitSyncEvent.bind(null, 'active'))
+      .on('change', emitSyncEvent.bind(null, 'change'))
       .on('complete', function (data) {
         store.lastSync = data.push.end_time;
         if (data.pull.end_time > store.lastSync) {
           store.lastSync = data.pull.end_time;
         }
-        emitEvent('sync', 'complete', data)      
+        emitSyncEvent('complete', data)      
         cb();
       });
   }
@@ -613,10 +594,12 @@ module.exports = function (bonnet, settings) {
 
       localChanges.on('change', function (change) {
         if (change.deleted) {
-          store.emit('remove', change.doc);
+          store.emit('remove', 'local', change.doc);
+          store.emit('remove:local', change.doc);
         }
 
-        store.emit('change', change);
+        store.emit('change', 'local', change);
+        store.emit('change:local', change);
         sync();
       });
 
