@@ -409,7 +409,6 @@ module.exports = Backbone.Model.extend({
     switch (method) {
       case 'create':
         bonnet.store.add(type, model.toJSON()).then(function (data) {
-          console.log('created', data);
           success(data);
         }, function (err) {
           error(null, null, err);
@@ -421,7 +420,6 @@ module.exports = Backbone.Model.extend({
         break;
       case 'delete':
         bonnet.store.remove(type, model.id).then(function () {
-          console.log('removed', model.id);
           success();
         }, function (err) {
           error(null, null, err);
@@ -458,6 +456,11 @@ function toJSON(doc) {
 }
 
 
+function replicationFilter(doc) {
+  return doc._id.indexOf('_design') !== 0;
+}
+
+
 module.exports = function (bonnet, settings) {
 
   var account = bonnet.account;
@@ -468,21 +471,35 @@ module.exports = function (bonnet, settings) {
     store.emit(type + ':' + eventName, data);
   }
 
-  function push() {
+  function push(ids) {
     if (!store.remote) { return; }
+    var replicationOpt = { filter: replicationFilter };
+    if (ids) {
+      if (!_.isArray(ids)) { ids = [ ids ]; }
+      replicationOpt.doc_ids = ids;
+    }
     emitEvent('push', 'start');
-    store.local.replicate.to(store.remote)
+    store.local.replicate.to(store.remote, replicationOpt)
+      .on('error', emitEvent.bind(null, 'push', 'error'))
       .on('change', emitEvent.bind(null, 'push', 'change'))
-      .on('complete', emitEvent.bind(null, 'push', 'complete'))
-      .on('error', emitEvent.bind(null, 'push', 'error'));
+      .on('complete', emitEvent.bind(null, 'push', 'complete'));
   }
 
   function sync(cb) {
     cb = cb || noop;
     if (!store.remoteUrl) { return cb(); }
     emitEvent('sync', 'start');
-    store.remote.replicate.sync(store.local)
+    store.remote.replicate.sync(store.local, { filter: replicationFilter })
       .on('error', emitEvent.bind(null, 'sync', 'error'))
+      .on('denied', function (err) {
+        console.error('sync denied', err);
+      })
+      .on('paused', function () {
+        console.log('sync paused');
+      })
+      .on('active', function () {
+        console.log('sync active');
+      })
       .on('change', emitEvent.bind(null, 'sync', 'change'))
       .on('complete', function (data) {
         store.lastSync = data.push.end_time;
@@ -565,7 +582,7 @@ module.exports = function (bonnet, settings) {
   //
   store.remove = function (type, id) {
     return store.find(type, id).then(function (doc) {
-      return store.local.remove(toJSON(doc));
+      return store.local.put({ _deleted: true }, toJSON(doc)._id, doc._rev);
     });
   };
 
@@ -585,7 +602,7 @@ module.exports = function (bonnet, settings) {
 
     var bonnetId = account.bonnetId() || '__bonnet_anon';
 
-    store.local = new PouchDB(bonnetId);
+    store.local = new PouchDB(bonnetId, { auto_compaction: true });
 
     function listenToLocalChanges() {
       var localChanges = store.local.changes({ 
@@ -600,7 +617,7 @@ module.exports = function (bonnet, settings) {
         }
 
         store.emit('change', change);
-        push();
+        sync();
       });
 
       cb();

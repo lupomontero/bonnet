@@ -20,7 +20,6 @@ module.exports = Backbone.Model.extend({
     switch (method) {
       case 'create':
         bonnet.store.add(type, model.toJSON()).then(function (data) {
-          console.log('created', data);
           success(data);
         }, function (err) {
           error(null, null, err);
@@ -32,7 +31,6 @@ module.exports = Backbone.Model.extend({
         break;
       case 'delete':
         bonnet.store.remove(type, model.id).then(function () {
-          console.log('removed', model.id);
           success();
         }, function (err) {
           error(null, null, err);
