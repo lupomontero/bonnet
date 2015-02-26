@@ -92,9 +92,8 @@ module.exports = Backbone.View.extend({
 
   loadTemplate: function (name, cb) {
     var that = this;
-    var app = that.options.app || {};
-    var cache = app.templates || {};
-    var prefix = app.options.routePrefix || '';
+    var cache = bonnet.templates || {};
+    var prefix = bonnet.options.routePrefix || '';
 
     if (cache.hasOwnProperty(name)) {
       return cb(null, cache[name]);
@@ -116,37 +115,40 @@ module.exports = Backbone.View.extend({
     window.history.back();
   },
 
-  subscribeToOutsideEvents: function () {
+  subscribeToGlobalEvents: function () {
     var view = this;
-    // Pass cid to `view._getOutsideEventsHandlers()` as this is memoized and
+    // Pass cid to `view._getGlobalEventsHandlers()` as this is memoized and
     // should be recomputed for each view!
-    _.each(view._getOutsideEventsHandlers(view.cid), function (ev) {
+    _.each(view._getGlobalEventsHandlers(view.cid), function (ev) {
       ev.src.on(ev.name, ev.fn);
-      //console.log('View subscribing to outside event ' + ev.name);
+      console.log('View subscribing to global event ' + ev.name);
     });
   },
 
-  unsubscribeFromOutsideEvents: function () {
-    _.each(this._getOutsideEventsHandlers(this.cid), function (ev) {
+  unsubscribeFromGlobalEvents: function () {
+    _.each(this._getGlobalEventsHandlers(this.cid), function (ev) {
       ev.src.off(ev.name, ev.fn);
-      //console.log('View unsubscribing from outside event ' + ev.name);
+      console.log('View unsubscribing from global event ' + ev.name);
     });
   },
 
-  _getOutsideEventsHandlers: _.memoize(function () {
+  _getGlobalEventsHandlers: _.memoize(function () {
     var view = this;
-    var app = view.options.app;
-    var store = app.store;
-    var task = app.task;
+    var account = bonnet.account;
+    var store = bonnet.store;
+    var task = bonnet.task;
     
-    return _.reduce(view.outsideEvents, function (memo, v, k) {
+    return _.reduce(view.globalEvents, function (memo, v, k) {
       var parts = k.split(' ');
       var src = parts[0];
       var fn = view[v];
       var ev = { name: parts[1] };
       if (!_.isFunction(fn)) { return; }
       ev.fn = fn.bind(view);
-      if (src === 'store') {
+      if (src === 'account') {
+        ev.src = account;
+        memo.push(ev);
+      } else if (src === 'store') {
         ev.src = store;
         memo.push(ev);
       } else if (src === 'task') {

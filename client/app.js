@@ -33,11 +33,11 @@ module.exports = Backbone.Router.extend({
 
   setMainView: function (view) {
     var prev = (this.view.regions.main || {}).view;
-    if (prev && prev.unsubscribeFromOutsideEvents) {
-      prev.unsubscribeFromOutsideEvents();
+    if (prev && prev.unsubscribeFromGlobalEvents) {
+      prev.unsubscribeFromGlobalEvents();
     }
     this.view.setRegionView('main', view);
-    view.subscribeToOutsideEvents();
+    view.subscribeToGlobalEvents();
   },
 
   showView: function (View, opt) {

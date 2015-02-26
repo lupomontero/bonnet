@@ -81,7 +81,7 @@ module.exports = function (config, cb) {
 
   server.start(function () {
     console.log('Backend started on port ' + config.port);
-    console.log(server.settings.connections.routes.payload);
+    //console.log(server.settings.connections.routes.payload);
     cb();
   });
 

@@ -42,6 +42,7 @@ module.exports = function (bonnet, settings) {
   }
 
 
+  // TODO: DEBOUNCE SYNC!!!
   function sync(cb) {
     cb = cb || noop;
     if (!store.remoteUrl) { return cb(); }
