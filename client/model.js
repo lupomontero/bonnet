@@ -1,12 +1,26 @@
 var assert = require('assert');
 var _ = require('lodash');
 var Backbone = require('backbone');
+var moment = require('moment');
 var noop = function () {};
+
+
+function isISODateString(str) {
+  var r = /\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/;
+  return typeof str === 'string' && r.test(str);
+}
 
 
 module.exports = Backbone.Model.extend({
 
   toViewContext: function () { return _.extend({}, this.attributes); },
+
+  parse: function (data) {
+    return _.reduce(data, function (memo, v, k) {
+      memo[k] = isISODateString(v) ? moment(v).toDate() : v;
+      return memo;
+    }, {});
+  },
 
   toJSON: function () {
     return this.attributes;

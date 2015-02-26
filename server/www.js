@@ -4,7 +4,15 @@ var path = require('path');
 
 module.exports = function (config, cb) {
 
-  var server = new Hapi.Server();
+  var server = new Hapi.Server({
+    connections: {
+      routes: {
+        payload: {
+          maxBytes: 1048576 * 5 // 5Mb
+        }
+      }
+    }
+  });
 
   server.connection({ port: config.port });
 
@@ -73,6 +81,7 @@ module.exports = function (config, cb) {
 
   server.start(function () {
     console.log('Backend started on port ' + config.port);
+    console.log(server.settings.connections.routes.payload);
     cb();
   });
 

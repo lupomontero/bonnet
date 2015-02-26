@@ -3,6 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
 var PouchDB = require('pouchdb');
 var _ = require('lodash');
+var async = require('async');
 var uid = require('../lib/uid');
 var noop = function () {};
 
@@ -105,15 +106,53 @@ module.exports = function (bonnet, settings) {
   //
   store.add = function (type, attrs) {
     assertDocType(type);
-    var doc = _.extend({}, attrs, {
+
+    var binaryAttachments = {};
+    var inlineAttachments = _.reduce(attrs._attachments, function (memo, v, k) {
+      if (v instanceof File) {
+        binaryAttachments[k] = v;
+      } else {
+        memo[k] = v;
+      }
+      return memo;
+    }, {});
+
+    var doc = _.extend({}, _.omit(attrs, [ '_attachments' ]), {
       _id: type + '/' + uid(),
       createdAt: new Date(),
       type: type
     });
+
+    if (_.keys(inlineAttachments).length) {
+      doc._attachments = inlineAttachments;
+    }
+
     return new Promise(function (resolve, reject) {
-      store.local.put(doc).then(function (data) {
+      var db = store.local;
+
+      db.put(doc).then(function (data) {
         doc._rev = data.rev;
-        resolve(parse(doc));
+
+        var binaryAttachmentsKeys = _.keys(binaryAttachments);
+
+        if (!binaryAttachmentsKeys.length) {
+          return resolve(parse(doc));
+        }
+
+        async.eachSeries(binaryAttachmentsKeys, function (key, cb) {
+          var docId = doc._id;
+          var rev = doc._rev;
+          var file = binaryAttachments[key];
+          var type = file.type;
+          db.putAttachment(docId, key, rev, file, type, function (err, data) {
+            if (err) { return cb(err); }
+            doc._rev = data.rev;
+            cb();
+          });
+        }, function (err) {
+          if (err) { return reject(err); }
+          resolve(parse(doc));
+        });
       }, reject);
     });
   };
@@ -128,11 +167,11 @@ module.exports = function (bonnet, settings) {
   };
 
 
-  store.attach = function (type, id, attachment, contentType) {
-    console.log(type, id, attachment, contentType);
-    return;
-    return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
-  },
+  //store.attach = function (type, id, attachment, contentType) {
+  //  console.log(type, id, attachment, contentType);
+  //  return;
+  //  return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
+  //},
 
   //
   // Remove object from store.

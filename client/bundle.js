@@ -57,6 +57,7 @@ Bonnet._ = _;
 Bonnet.Backbone = Backbone;
 Bonnet.Handlebars = Handlebars;
 Bonnet.moment = moment;
+Bonnet.async = async;
 
 
 },{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
@@ -390,12 +391,26 @@ module.exports = Backbone.Collection.extend({
 var assert = require('assert');
 var _ = require('lodash');
 var Backbone = require('backbone');
+var moment = require('moment');
 var noop = function () {};
+
+
+function isISODateString(str) {
+  var r = /\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/;
+  return typeof str === 'string' && r.test(str);
+}
 
 
 module.exports = Backbone.Model.extend({
 
   toViewContext: function () { return _.extend({}, this.attributes); },
+
+  parse: function (data) {
+    return _.reduce(data, function (memo, v, k) {
+      memo[k] = isISODateString(v) ? moment(v).toDate() : v;
+      return memo;
+    }, {});
+  },
 
   toJSON: function () {
     return this.attributes;
@@ -433,12 +448,13 @@ module.exports = Backbone.Model.extend({
 });
 
 
-},{"assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/store.js":[function(require,module,exports){
+},{"assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/client/store.js":[function(require,module,exports){
 var assert = require('assert');
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
 var PouchDB = require('pouchdb');
 var _ = require('lodash');
+var async = require('async');
 var uid = require('../lib/uid');
 var noop = function () {};
 
@@ -541,15 +557,53 @@ module.exports = function (bonnet, settings) {
   //
   store.add = function (type, attrs) {
     assertDocType(type);
-    var doc = _.extend({}, attrs, {
+
+    var binaryAttachments = {};
+    var inlineAttachments = _.reduce(attrs._attachments, function (memo, v, k) {
+      if (v instanceof File) {
+        binaryAttachments[k] = v;
+      } else {
+        memo[k] = v;
+      }
+      return memo;
+    }, {});
+
+    var doc = _.extend({}, _.omit(attrs, [ '_attachments' ]), {
       _id: type + '/' + uid(),
       createdAt: new Date(),
       type: type
     });
+
+    if (_.keys(inlineAttachments).length) {
+      doc._attachments = inlineAttachments;
+    }
+
     return new Promise(function (resolve, reject) {
-      store.local.put(doc).then(function (data) {
+      var db = store.local;
+
+      db.put(doc).then(function (data) {
         doc._rev = data.rev;
-        resolve(parse(doc));
+
+        var binaryAttachmentsKeys = _.keys(binaryAttachments);
+
+        if (!binaryAttachmentsKeys.length) {
+          return resolve(parse(doc));
+        }
+
+        async.eachSeries(binaryAttachmentsKeys, function (key, cb) {
+          var docId = doc._id;
+          var rev = doc._rev;
+          var file = binaryAttachments[key];
+          var type = file.type;
+          db.putAttachment(docId, key, rev, file, type, function (err, data) {
+            if (err) { return cb(err); }
+            doc._rev = data.rev;
+            cb();
+          });
+        }, function (err) {
+          if (err) { return reject(err); }
+          resolve(parse(doc));
+        });
       }, reject);
     });
   };
@@ -564,11 +618,11 @@ module.exports = function (bonnet, settings) {
   };
 
 
-  store.attach = function (type, id, attachment, contentType) {
-    console.log(type, id, attachment, contentType);
-    return;
-    return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
-  },
+  //store.attach = function (type, id, attachment, contentType) {
+  //  console.log(type, id, attachment, contentType);
+  //  return;
+  //  return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
+  //},
 
   //
   // Remove object from store.
@@ -650,7 +704,7 @@ module.exports = function (bonnet, settings) {
 };
 
 
-},{"../lib/uid":"/Users/lupo/work/lupomontero/bonnet/lib/uid.js","assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","pouchdb":"/Users/lupo/work/lupomontero/bonnet/node_modules/pouchdb/lib/index.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/task.js":[function(require,module,exports){
+},{"../lib/uid":"/Users/lupo/work/lupomontero/bonnet/lib/uid.js","assert":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/assert/assert.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","pouchdb":"/Users/lupo/work/lupomontero/bonnet/node_modules/pouchdb/lib/index.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/task.js":[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
 
 module.exports = function (bonnet) {
@@ -813,6 +867,7 @@ module.exports = Backbone.View.extend({
     var app = view.options.app;
     var store = app.store;
     var task = app.task;
+    
     return _.reduce(view.outsideEvents, function (memo, v, k) {
       var parts = k.split(' ');
       var src = parts[0];
@@ -3694,7 +3749,7 @@ module.exports = function (length) {
 }));
 
 },{"underscore":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/node_modules/underscore/underscore.js"}],"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/node_modules/underscore/underscore.js":[function(require,module,exports){
-//     Underscore.js 1.8.1
+//     Underscore.js 1.8.2
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
 //     Underscore may be freely distributed under the MIT license.
@@ -3751,7 +3806,7 @@ module.exports = function (length) {
   }
 
   // Current version.
-  _.VERSION = '1.8.1';
+  _.VERSION = '1.8.2';
 
   // Internal function that returns an efficient (for current engines) version
   // of the passed-in callback, to be repeatedly applied in other Underscore
@@ -3950,9 +4005,9 @@ module.exports = function (length) {
 
   // Determine if the array or object contains a given value (using `===`).
   // Aliased as `includes` and `include`.
-  _.contains = _.includes = _.include = function(obj, target) {
+  _.contains = _.includes = _.include = function(obj, target, fromIndex) {
     if (!isArrayLike(obj)) obj = _.values(obj);
-    return _.indexOf(obj, target) >= 0;
+    return _.indexOf(obj, target, typeof fromIndex == 'number' && fromIndex) >= 0;
   };
 
   // Invoke a method (with arguments) on every item in a collection.
@@ -4590,6 +4645,28 @@ module.exports = function (length) {
   // Object Functions
   // ----------------
 
+  // Keys in IE < 9 that won't be iterated by `for key in ...` and thus missed.
+  var hasEnumBug = !{toString: null}.propertyIsEnumerable('toString');
+  var nonEnumerableProps = ['valueOf', 'isPrototypeOf', 'toString',
+                      'propertyIsEnumerable', 'hasOwnProperty', 'toLocaleString'];
+
+  function collectNonEnumProps(obj, keys) {
+    var nonEnumIdx = nonEnumerableProps.length;
+    var constructor = obj.constructor;
+    var proto = (_.isFunction(constructor) && constructor.prototype) || ObjProto;
+
+    // Constructor is a special case.
+    var prop = 'constructor';
+    if (_.has(obj, prop) && !_.contains(keys, prop)) keys.push(prop);
+
+    while (nonEnumIdx--) {
+      prop = nonEnumerableProps[nonEnumIdx];
+      if (prop in obj && obj[prop] !== proto[prop] && !_.contains(keys, prop)) {
+        keys.push(prop);
+      }
+    }
+  }
+
   // Retrieve the names of an object's own properties.
   // Delegates to **ECMAScript 5**'s native `Object.keys`
   _.keys = function(obj) {
@@ -4597,6 +4674,8 @@ module.exports = function (length) {
     if (nativeKeys) return nativeKeys(obj);
     var keys = [];
     for (var key in obj) if (_.has(obj, key)) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
     return keys;
   };
 
@@ -4605,6 +4684,8 @@ module.exports = function (length) {
     if (!_.isObject(obj)) return [];
     var keys = [];
     for (var key in obj) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
     return keys;
   };
 
@@ -4670,7 +4751,7 @@ module.exports = function (length) {
 
   // Assigns a given object with all the own properties in the passed-in object(s)
   // (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
-  _.extendOwn = createAssigner(_.keys);
+  _.extendOwn = _.assign = createAssigner(_.keys);
 
   // Returns the first key on an object that passes a predicate test
   _.findKey = function(obj, predicate, context) {
@@ -4683,24 +4764,21 @@ module.exports = function (length) {
   };
 
   // Return a copy of the object only containing the whitelisted properties.
-  _.pick = function(obj, iteratee, context) {
-    var result = {}, key;
+  _.pick = function(object, oiteratee, context) {
+    var result = {}, obj = object, iteratee, keys;
     if (obj == null) return result;
-    if (_.isFunction(iteratee)) {
-      iteratee = optimizeCb(iteratee, context);
-      var keys = _.allKeys(obj);
-      for (var i = 0; i < keys.length; i++) {
-        var key = keys[i];
-        var value = obj[key];
-        if (iteratee(value, key, obj)) result[key] = value;
-      }
+    if (_.isFunction(oiteratee)) {
+      keys = _.allKeys(obj);
+      iteratee = optimizeCb(oiteratee, context);
     } else {
-      var keys = flatten(arguments, false, false, 1);
-      obj = new Object(obj);
-      for (var i = 0, length = keys.length; i < length; i++) {
-        key = keys[i];
-        if (key in obj) result[key] = obj[key];
-      }
+      keys = flatten(arguments, false, false, 1);
+      iteratee = function(value, key, obj) { return key in obj; };
+      obj = Object(obj);
+    }
+    for (var i = 0, length = keys.length; i < length; i++) {
+      var key = keys[i];
+      var value = obj[key];
+      if (iteratee(value, key, obj)) result[key] = value;
     }
     return result;
   };
@@ -13076,10 +13154,10 @@ module.exports = amdefine;
 (function (global){
 /**
  * @license
- * lodash 3.3.0 (Custom Build) <https://lodash.com/>
+ * lodash 3.3.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern -d -o ./index.js`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.2 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -13089,7 +13167,7 @@ module.exports = amdefine;
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '3.3.0';
+  var VERSION = '3.3.1';
 
   /** Used to compose bitmasks for wrapper metadata. */
   var BIND_FLAG = 1,
@@ -14880,7 +14958,7 @@ module.exports = amdefine;
       var index = -1,
           indexOf = getIndexOf(),
           isCommon = indexOf == baseIndexOf,
-          cache = isCommon && values.length >= 200 && createCache(values),
+          cache = (isCommon && values.length >= 200) ? createCache(values) : null,
           valuesLength = values.length;
 
       if (cache) {
@@ -15700,7 +15778,7 @@ module.exports = amdefine;
           length = array.length,
           isCommon = indexOf == baseIndexOf,
           isLarge = isCommon && length >= 200,
-          seen = isLarge && createCache(),
+          seen = isLarge ? createCache() : null,
           result = [];
 
       if (seen) {
@@ -16752,8 +16830,11 @@ module.exports = amdefine;
       } else {
         prereq = type == 'string' && index in object;
       }
-      var other = object[index];
-      return prereq && (value === value ? value === other : other !== other);
+      if (prereq) {
+        var other = object[index];
+        return value === value ? value === other : other !== other;
+      }
+      return false;
     }
 
     /**
@@ -17479,7 +17560,7 @@ module.exports = amdefine;
      * // => 2
      *
      * // using the `_.matches` callback shorthand
-     * _.findLastIndex(users, { user': 'barney', 'active': true });
+     * _.findLastIndex(users, { 'user': 'barney', 'active': true });
      * // => 0
      *
      * // using the `_.matchesProperty` callback shorthand
@@ -17590,7 +17671,7 @@ module.exports = amdefine;
      * @example
      *
      * _.indexOf([1, 2, 1, 2], 2);
-     * // => 2
+     * // => 1
      *
      * // using `fromIndex`
      * _.indexOf([1, 2, 1, 2], 2, 2);
@@ -17663,7 +17744,7 @@ module.exports = amdefine;
         var value = arguments[argsIndex];
         if (isArray(value) || isArguments(value)) {
           args.push(value);
-          caches.push(isCommon && value.length >= 120 && createCache(argsIndex && value));
+          caches.push((isCommon && value.length >= 120) ? createCache(argsIndex && value) : null);
         }
       }
       argsLength = args.length;
@@ -19731,7 +19812,7 @@ module.exports = amdefine;
      * ];
      *
      * // using the `_.matches` callback shorthand
-     * _.some(users, { user': 'barney', 'active': false });
+     * _.some(users, { 'user': 'barney', 'active': false });
      * // => false
      *
      * // using the `_.matchesProperty` callback shorthand
@@ -20267,7 +20348,7 @@ module.exports = amdefine;
      * @memberOf _
      * @category Function
      * @param {Function} func The function to debounce.
-     * @param {number} wait The number of milliseconds to delay.
+     * @param {number} [wait=0] The number of milliseconds to delay.
      * @param {Object} [options] The options object.
      * @param {boolean} [options.leading=false] Specify invoking on the leading
      *  edge of the timeout.
@@ -20325,7 +20406,7 @@ module.exports = amdefine;
       if (typeof func != 'function') {
         throw new TypeError(FUNC_ERROR_TEXT);
       }
-      wait = wait < 0 ? 0 : wait;
+      wait = wait < 0 ? 0 : (+wait || 0);
       if (options === true) {
         var leading = true;
         trailing = false;
@@ -20846,7 +20927,7 @@ module.exports = amdefine;
      * @memberOf _
      * @category Function
      * @param {Function} func The function to throttle.
-     * @param {number} wait The number of milliseconds to throttle invocations to.
+     * @param {number} [wait=0] The number of milliseconds to throttle invocations to.
      * @param {Object} [options] The options object.
      * @param {boolean} [options.leading=true] Specify invoking on the leading
      *  edge of the timeout.
@@ -23163,10 +23244,10 @@ module.exports = amdefine;
      * var compiled = _.template('hi <%= data.user %>!', { 'variable': 'data' });
      * compiled.source;
      * // => function(data) {
-     *   var __t, __p = '';
-     *   __p += 'hi ' + ((__t = ( data.user )) == null ? '' : __t) + '!';
-     *   return __p;
-     * }
+     * //   var __t, __p = '';
+     * //   __p += 'hi ' + ((__t = ( data.user )) == null ? '' : __t) + '!';
+     * //   return __p;
+     * // }
      *
      * // using the `source` property to inline compiled templates for meaningful
      * // line numbers in error messages and a stack trace
@@ -24280,15 +24361,13 @@ module.exports = amdefine;
 
     // Add `LazyWrapper` methods that accept an `iteratee` value.
     arrayEach(['filter', 'map', 'takeWhile'], function(methodName, index) {
-      var isFilter = index == LAZY_FILTER_FLAG,
-          isWhile = index == LAZY_WHILE_FLAG;
+      var isFilter = index == LAZY_FILTER_FLAG || index == LAZY_WHILE_FLAG;
 
       LazyWrapper.prototype[methodName] = function(iteratee, thisArg) {
         var result = this.clone(),
-            filtered = result.__filtered__,
             iteratees = result.__iteratees__ || (result.__iteratees__ = []);
 
-        result.__filtered__ = filtered || isFilter || (isWhile && result.__dir__ < 0);
+        result.__filtered__ = result.__filtered__ || isFilter;
         iteratees.push({ 'iteratee': getCallback(iteratee, thisArg, 3), 'type': index });
         return result;
       };
@@ -24355,9 +24434,14 @@ module.exports = amdefine;
     };
 
     LazyWrapper.prototype.dropWhile = function(predicate, thisArg) {
-      var done;
+      var done,
+          lastIndex,
+          isRight = this.__dir__ < 0;
+
       predicate = getCallback(predicate, thisArg, 3);
       return this.filter(function(value, index, array) {
+        done = done && (isRight ? index < lastIndex : index > lastIndex);
+        lastIndex = index;
         return done || (done = !predicate(value, index, array));
       });
     };
@@ -39380,12 +39464,21 @@ function upsertInner(db, docId, diffFun) {
         }
         doc = {};
       }
+
+      // the user might change the _rev, so save it for posterity
+      var docRev = doc._rev;
       var newDoc = diffFun(doc);
+
       if (!newDoc) {
-        return fulfill({updated: false, rev: doc._rev});
+        // if the diffFun returns falsy, we short-circuit as
+        // an optimization
+        return fulfill({updated: false, rev: docRev});
       }
+
+      // users aren't allowed to modify these values,
+      // so reset them here
       newDoc._id = docId;
-      newDoc._rev = doc._rev;
+      newDoc._rev = docRev;
       fulfill(tryAndPut(db, newDoc, diffFun));
     });
   });

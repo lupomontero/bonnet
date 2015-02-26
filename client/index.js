@@ -56,4 +56,5 @@ Bonnet._ = _;
 Bonnet.Backbone = Backbone;
 Bonnet.Handlebars = Handlebars;
 Bonnet.moment = moment;
+Bonnet.async = async;
 

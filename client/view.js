@@ -138,6 +138,7 @@ module.exports = Backbone.View.extend({
     var app = view.options.app;
     var store = app.store;
     var task = app.task;
+    
     return _.reduce(view.outsideEvents, function (memo, v, k) {
       var parts = k.split(' ');
       var src = parts[0];
