@@ -448,7 +448,11 @@ function assertDocType(type) {
 }
 
 function parse(doc) {
-  return _.extend({ id: doc._id.split('/')[1] }, _.omit(doc, [ '_id' ]));
+  var idParts = doc._id.split('/');
+  return _.extend({
+    id: idParts[1],
+    type: idParts[0]
+  }, _.omit(doc, [ '_id' ]));
 }
 
 function toJSON(doc) {
@@ -466,10 +470,12 @@ module.exports = function (bonnet, settings) {
   var account = bonnet.account;
   var store = new EventEmitter();
 
+  
   function emitSyncEvent(eventName, data) {
     store.emit('sync', eventName, data);
     store.emit('sync:' + eventName, data);
   }
+
 
   function sync(cb) {
     cb = cb || noop;
@@ -558,6 +564,12 @@ module.exports = function (bonnet, settings) {
   };
 
 
+  store.attach = function (type, id, attachment, contentType) {
+    console.log(type, id, attachment, contentType);
+    return;
+    return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
+  },
+
   //
   // Remove object from store.
   //
@@ -593,13 +605,26 @@ module.exports = function (bonnet, settings) {
       });
 
       localChanges.on('change', function (change) {
-        if (change.deleted) {
-          store.emit('remove', 'local', change.doc);
-          store.emit('remove:local', change.doc);
+        var doc = parse(change.doc);
+        var type = doc.type;
+
+        if (!type) { return; }
+
+        function emit(eventName) {
+          store.emit(eventName, doc, { local: true });
+          store.emit(eventName + ':' + type, doc, { local: true });
         }
 
-        store.emit('change', 'local', change);
-        store.emit('change:local', change);
+        if (change.deleted || doc._deleted) {
+          emit('remove');
+        } else if (/^1-/.test(doc._rev)) {
+          emit('add');
+        } else {
+          emit('update');
+        }
+
+        emit('change');
+
         sync();
       });
 
