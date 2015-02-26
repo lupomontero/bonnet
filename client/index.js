@@ -1,14 +1,25 @@
+//
+// Use jQuery from global scope.
+//
+var $ = window.jQuery || window.$;
+
+
+//
+// External Dependencies
+//
 var _ = require('lodash');
 var async = require('async');
 var Backbone = require('backbone');
 var Handlebars = require('handlebars');
 var moment = require('moment');
+
+
 var App = require('./app');
 var noop = function () {};
 
 
 // Backbone needs reference to glbal jQuery
-Backbone.$ = window.jQuery;
+Backbone.$ = $;
 
 
 var defaults = { 
@@ -51,10 +62,11 @@ Bonnet.Model = require('./model');
 Bonnet.Collection = require('./collection');
 
 
-Bonnet.$ = window.jQuery;
-Bonnet._ = _;
-Bonnet.Backbone = Backbone;
-Bonnet.Handlebars = Handlebars;
-Bonnet.moment = moment;
-Bonnet.async = async;
+// Export references to deps...
+Bonnet.$ = $;
+Bonnet._ = window._ = _;
+Bonnet.async = window.async = async;
+Bonnet.Backbone = window.Backbone = Backbone;
+Bonnet.Handlebars = window.Handlebars = Handlebars;
+Bonnet.moment = window.moment = moment;
 

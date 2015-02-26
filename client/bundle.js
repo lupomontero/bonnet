@@ -1,15 +1,26 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"./client/index.js":[function(require,module,exports){
+//
+// Use jQuery from global scope.
+//
+var $ = window.jQuery || window.$;
+
+
+//
+// External Dependencies
+//
 var _ = require('lodash');
 var async = require('async');
 var Backbone = require('backbone');
 var Handlebars = require('handlebars');
 var moment = require('moment');
+
+
 var App = require('./app');
 var noop = function () {};
 
 
 // Backbone needs reference to glbal jQuery
-Backbone.$ = window.jQuery;
+Backbone.$ = $;
 
 
 var defaults = { 
@@ -52,12 +63,13 @@ Bonnet.Model = require('./model');
 Bonnet.Collection = require('./collection');
 
 
-Bonnet.$ = window.jQuery;
-Bonnet._ = _;
-Bonnet.Backbone = Backbone;
-Bonnet.Handlebars = Handlebars;
-Bonnet.moment = moment;
-Bonnet.async = async;
+// Export references to deps...
+Bonnet.$ = $;
+Bonnet._ = window._ = _;
+Bonnet.async = window.async = async;
+Bonnet.Backbone = window.Backbone = Backbone;
+Bonnet.Handlebars = window.Handlebars = Handlebars;
+Bonnet.moment = window.moment = moment;
 
 
 },{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
