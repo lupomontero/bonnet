@@ -12,6 +12,15 @@ function isISODateString(str) {
 
 module.exports = Backbone.Model.extend({
 
+  initialize: function (attrs, options) {
+    Backbone.Model.prototype.initialize.call(this, attrs, options);
+    if (options && options.app) {
+      this.app = options.app;
+    } else {
+      //console.log(this, options);
+    }
+  },
+
   toViewContext: function () { return _.extend({}, this.attributes); },
 
   parse: function (data) {

@@ -7,6 +7,11 @@ module.exports = Backbone.Collection.extend({
 
   model: Model,
 
+  initialize: function (models, options) {
+    this.app = options.app;
+    Backbone.Collection.prototype.initialize.call(this, models, options);
+  },
+
   comparator: function (m) { return -1 * m.get('createdAt'); },
 
   toViewContext: function () {
@@ -24,9 +29,10 @@ module.exports = Backbone.Collection.extend({
     var success = options.success || noop;
     var error = options.error || noop;
     var type = (new collection.model()).get('type');
+    var store = this.app.store;
 
     if (method === 'read') {
-      bonnet.store.findAll(type, options).then(function (data) {
+      store.findAll(type, options).then(function (data) {
         success(data);
       }, function (err) {
         error(null, null, err);

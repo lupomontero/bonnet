@@ -3,18 +3,48 @@ var Backbone = require('backbone');
 var AppView = require('./app-view');
 
 
+var optionKeys = [
+  'routePrefix',
+  'collections',
+  'models',
+  'views',
+  'templates'
+];
+
+
 module.exports = Backbone.Router.extend({
 
-  initialize: function (opt) {
+  routePrefix: '',
+  templates: null,
+
+  initialize: function (options) {
     var app = this;
-    app.options = opt;
-    Backbone.Router.prototype.initialize.call(app, opt);
-    _.extend(app, opt.bonnet, { view: new AppView({ model: app }) });
+    var bonnet = options.bonnet || require('../')(_.omit(options, optionKeys));
+    var bonnetStart = bonnet.start.bind(bonnet);
+
+    Backbone.Router.prototype.initialize.call(app, options);
+
+    // Set known opts as instance props.
+    optionKeys.forEach(function (optName) {
+      if (typeof options[optName] === 'undefined') { return; }
+      app[optName] = options[optName];
+    });
+
+    _.extend(app, bonnet, {
+      view: new AppView({ model: app }),
+      start: function () {
+        bonnetStart(function (err) {
+          if (err) { throw err; }
+          Backbone.history.start({ pushState: true });
+        });
+      }
+    });
+
     if (!app.routes) { app.routes = {}; }
   },
 
   route: function (route, name, cb) {
-    var prefix = this.options.routePrefix || '';
+    var prefix = this.routePrefix || '';
     if (arguments.length === 2) {
       cb = name;
       name = route;
@@ -24,13 +54,8 @@ module.exports = Backbone.Router.extend({
   },
 
   navigate: function (fragment, options) {
-    var prefix = this.options.routePrefix || '';
+    var prefix = this.routePrefix || '';
     return Backbone.Router.prototype.navigate.call(this, prefix + fragment, options);
-  },
-
-  start: function () {
-    console.log(this);
-    Backbone.history.start({ pushState: true });
   },
 
   addRegion: function (name, opt) {
@@ -47,6 +72,12 @@ module.exports = Backbone.Router.extend({
   },
 
   showView: function (View, opt) {
+    if (typeof View === 'string') {
+      if (!this.views[View]) {
+        throw new Error('Unknown view: "' + View + '"');
+      }
+      View = this.views[View];
+    }
     var view = new View(_.extend({ app: this }, opt));
     this.setMainView(view);
     return view;
@@ -78,6 +109,16 @@ module.exports = Backbone.Router.extend({
       }
       fn.apply(this, Array.prototype.slice.call(arguments, 0));
     };
+  },
+
+  createCollection: function (name, models, options) {
+    var Constructor = this.collections[name];
+    return new Constructor(models, _.extend({}, options, { app: this }));
+  },
+
+  createModel: function (name, attrs, options) {
+    var Constructor = this.models[name];
+    return new Constructor(attrs, _.extend({}, options, { app: this }));
   }
 
 });

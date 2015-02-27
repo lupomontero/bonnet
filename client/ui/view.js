@@ -30,34 +30,34 @@ module.exports = Backbone.View.extend({
   _next: null,
 
   initialize: function (opt) {
-    var that = this;
+    var view = this;
     opt = opt || {};
-    Backbone.View.prototype.initialize.call(that, opt);
-    that.options = opt;
-    that.render = _.debounce(that.render, 100);
-    that.locals = _.extend(that.locals, opt.locals || {});
-    if (that.templateName) {
+    Backbone.View.prototype.initialize.call(view, opt);
+    view.app = opt.app;
+    view.render = _.debounce(view.render, 100);
+    view.locals = _.extend(view.locals, opt.locals || {});
+    if (view.templateName) {
       setTimeout(function () {
-        that.loadTemplate(that.templateName, function (err, tmpl) {
-          that.template = tmpl;
+        view.loadTemplate(view.templateName, function (err, tmpl) {
+          view.template = tmpl;
         });
       }, 10);
     }
   },
 
   render: function (ctx) {
-    var that = this;
+    var view = this;
 
     // If there was any render invokation waiting to run we cancel it.
-    if (that._next) { window.clearTimeout(that._next); }
+    if (view._next) { window.clearTimeout(view._next); }
     // If we are not ready for action schedule rerun...
-    if (!that.template || that._isRendering) {
-      that._next = window.setTimeout(function () { that.render(ctx); }, 25);
-      return that;
+    if (!view.template || view._isRendering) {
+      view._next = window.setTimeout(function () { view.render(ctx); }, 25);
+      return view;
     }
 
     // If no context was passed we use `this.model`.
-    ctx = ctx || that.model || {};
+    ctx = ctx || view.model || {};
 
     if (_.isFunction(ctx.toViewContext)) {
       ctx = ctx.toViewContext();
@@ -72,15 +72,15 @@ module.exports = Backbone.View.extend({
     }
 
     // Render actual handlebars template.
-    that._isRendering = true;
-    that.$el.addClass('loading');
-    that._next = window.setTimeout(function () {
-      that.$el.html($.trim(that.template(_.extend({}, that.locals, ctx))));
-      that._isRendering = false;
-      that.$el.removeClass('loading');
-      that.trigger('render');
+    view._isRendering = true;
+    view.$el.addClass('loading');
+    view._next = window.setTimeout(function () {
+      view.$el.html($.trim(view.template(_.extend({}, view.locals, ctx))));
+      view._isRendering = false;
+      view.$el.removeClass('loading');
+      view.trigger('render');
     }, 25);
-    return that;
+    return view;
   },
 
   partial: function (path, ctx, cb) {
@@ -91,18 +91,17 @@ module.exports = Backbone.View.extend({
   },
 
   loadTemplate: function (name, cb) {
-    var that = this;
-    var app = that.options.app;
-    var cache = app.options.templates || {};
-    var prefix = app.options.routePrefix || '';
+    var view = this;
+    var cache = view.app.templates || {};
+    var prefix = view.app.routePrefix || '';
 
     if (cache.hasOwnProperty(name)) {
       return cb(null, cache[name]);
     }
 
-    $.get(that.templatePath + '/' + name + '.hbs')
+    $.get(view.templatePath + '/' + name + '.hbs')
       .fail(function () {
-        that.trigger('error', new Error('Error loading template (' + name + ')'));
+        view.trigger('error', new Error('Error loading template (' + name + ')'));
       })
       .done(function (data) {
         cache[name] = Handlebars.compile($.trim(data));
@@ -135,9 +134,6 @@ module.exports = Backbone.View.extend({
 
   _getGlobalEventsHandlers: _.memoize(function () {
     var view = this;
-    var account = bonnet.account;
-    var store = bonnet.store;
-    var task = bonnet.task;
     
     return _.reduce(view.globalEvents, function (memo, v, k) {
       var parts = k.split(' ');
@@ -147,13 +143,13 @@ module.exports = Backbone.View.extend({
       if (!_.isFunction(fn)) { return; }
       ev.fn = fn.bind(view);
       if (src === 'account') {
-        ev.src = account;
+        ev.src = view.app.account;
         memo.push(ev);
       } else if (src === 'store') {
-        ev.src = store;
+        ev.src = view.app.store;
         memo.push(ev);
       } else if (src === 'task') {
-        ev.src = task;
+        ev.src = view.app.task;
         memo.push(ev);
       }
       return memo;

@@ -242,7 +242,7 @@ module.exports = function (settings, account) {
   store.init = function (cb) {
     cb = cb || noop;
 
-    var bonnetId = account.bonnetId() || '__bonnet_anon';
+    var bonnetId = account.id() || '__bonnet_anon';
 
     store.local = new PouchDB(bonnetId, { auto_compaction: true });
 

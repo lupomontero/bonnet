@@ -15,8 +15,9 @@ module.exports = function (settings) {
   var hasInit = false;
 
 
-  account.bonnetId = function () {
-    return account.session.userCtx.roles.reduce(function (memo, item) {
+  account.id = function () {
+    var roles = ((account.session || {}).userCtx || {}).roles || [];
+    return roles.reduce(function (memo, item) {
       var matches = /^bonnet:write:user\/([a-z0-9]+)$/.exec(item);
       if (matches && matches[1]) { return matches[1]; }
       return memo;
