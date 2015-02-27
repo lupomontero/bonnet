@@ -1,33 +1,22 @@
-//
-// Use jQuery from global scope.
-//
-var $ = window.jQuery || window.$;
-
 
 //
 // External Dependencies
 //
 var _ = require('lodash');
 var async = require('async');
-var Backbone = require('backbone');
-var Handlebars = require('handlebars');
-var moment = require('moment');
-
+var noop = function () {};
 //
 // Other deps:
+// * jQuery
 // * events.EventEmitter
 // * Promise
 // * PouchDB
 //
 
-var App = require('./app');
-var noop = function () {};
 
-
-// Backbone needs reference to glbal jQuery
-Backbone.$ = $;
-
-
+//
+// Default settings.
+//
 var defaults = { 
   remote: window.location.origin + '/_api',
   routePrefix: ''
@@ -37,42 +26,23 @@ var defaults = {
 //
 // `Bonnet` Front end API
 //
-var Bonnet = window.Bonnet = function (options) {
-
+module.exports = function Bonnet(options) {
   var settings = _.extend({}, defaults, options);
-  var bonnet = window.bonnet = new App(settings);
+  var account = require('./account')(settings);
+  var store = require('./store')(settings, account);
 
-  bonnet.account = require('./account')(bonnet, settings);
-  bonnet.store = require('./store')(bonnet, settings);
-  bonnet.task = require('./task')(bonnet, settings);
-
-  bonnet.start = function (cb) {
-    cb = cb || noop;
-    async.applyEachSeries([
-      async.apply(bonnet.account.init),
-      async.apply(bonnet.store.init),
-    ], function (err) {
-      if (err) { return console.error(err); }
-      App.prototype.start.call(bonnet);
-      cb();
-    });
+  return {
+    settings: settings,
+    account: account,
+    store: store,
+    task: require('./task')(settings, account, store),
+    start: function (cb) {
+      cb = cb || noop;
+      async.applyEachSeries([
+        async.apply(account.init),
+        async.apply(store.init),
+      ], cb);
+    }
   };
-
-  return bonnet;
-
 };
-
-
-Bonnet.View = require('./view');
-Bonnet.Model = require('./model');
-Bonnet.Collection = require('./collection');
-
-
-// Export references to deps...
-Bonnet.$ = $;
-Bonnet._ = window._ = _;
-Bonnet.async = window.async = async;
-Bonnet.Backbone = window.Backbone = Backbone;
-Bonnet.Handlebars = window.Handlebars = Handlebars;
-Bonnet.moment = window.moment = moment;
 

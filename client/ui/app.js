@@ -7,9 +7,9 @@ module.exports = Backbone.Router.extend({
 
   initialize: function (opt) {
     var app = this;
-    this.options = opt;
+    app.options = opt;
     Backbone.Router.prototype.initialize.call(app, opt);
-    app.view = new AppView({ model: app });
+    _.extend(app, opt.bonnet, { view: new AppView({ model: app }) });
     if (!app.routes) { app.routes = {}; }
   },
 
@@ -29,6 +29,7 @@ module.exports = Backbone.Router.extend({
   },
 
   start: function () {
+    console.log(this);
     Backbone.history.start({ pushState: true });
   },
 

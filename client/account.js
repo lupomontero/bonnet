@@ -9,7 +9,7 @@ function userDocUrl(email) {
 }
 
 
-module.exports = function (bonnet, settings) {
+module.exports = function (settings) {
 
   var account = new EventEmitter();
   var hasInit = false;
@@ -64,8 +64,7 @@ module.exports = function (bonnet, settings) {
 
 
   account.destroy = function () {
-    //bonnet.store.local.destroy();
-    var userCtx = (bonnet.account.session || {}).userCtx || {};
+    var userCtx = (account.session || {}).userCtx || {};
     var url = userDocUrl(userCtx.name);
     console.log(url);
     couch.get(url, function (err, data) {

@@ -26,9 +26,8 @@ function toJSON(doc) {
 }
 
 
-module.exports = function (bonnet, settings) {
+module.exports = function (settings, account) {
 
-  var account = bonnet.account;
   var store = new EventEmitter();
 
   
@@ -79,10 +78,11 @@ module.exports = function (bonnet, settings) {
   //
   store.find = function (type, id, options) {
     assertDocType(type);
+    options = options || {};
     return new Promise(function (resolve, reject) {
       store.local.get(type + '/' + id).then(function (doc) {
         var attrs = parse(doc);
-        if (!options || !options.attachments || !doc._attachments) {
+        if (!options.attachments || !doc._attachments) {
           return resolve(attrs);
         }
         store.getAttachments(doc).then(function (attachments) {
@@ -99,6 +99,7 @@ module.exports = function (bonnet, settings) {
   //
   store.findAll = function (type, options) {
     assertDocType(type);
+    options = options || {};
     return new Promise(function (resolve, reject) {
       store.local.allDocs({
         include_docs: true,

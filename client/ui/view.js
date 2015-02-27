@@ -92,8 +92,9 @@ module.exports = Backbone.View.extend({
 
   loadTemplate: function (name, cb) {
     var that = this;
-    var cache = bonnet.templates || {};
-    var prefix = bonnet.options.routePrefix || '';
+    var app = that.options.app;
+    var cache = app.options.templates || {};
+    var prefix = app.options.routePrefix || '';
 
     if (cache.hasOwnProperty(name)) {
       return cb(null, cache[name]);
