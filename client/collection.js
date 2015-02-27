@@ -26,7 +26,7 @@ module.exports = Backbone.Collection.extend({
     var type = (new collection.model()).get('type');
 
     if (method === 'read') {
-      bonnet.store.findAll(type).then(function (data) {
+      bonnet.store.findAll(type, options).then(function (data) {
         success(data);
       }, function (err) {
         error(null, null, err);

@@ -44,7 +44,7 @@ module.exports = function (bonnet, settings) {
 
 
   // TODO: DEBOUNCE SYNC!!!
-  function sync(cb) {
+  store.sync = function (cb) {
     cb = cb || noop;
     if (!store.remoteUrl) { return cb(); }
     store.remote.replicate.sync(store.local, { filter: replicationFilter })
@@ -74,11 +74,18 @@ module.exports = function (bonnet, settings) {
   //
   // Find object by id.
   //
-  store.find = function (type, id) {
+  store.find = function (type, id, options) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
       store.local.get(type + '/' + id).then(function (doc) {
-        resolve(parse(doc));
+        var attrs = parse(doc);
+        if (!options || !options.attachments || !doc._attachments) {
+          return resolve(attrs);
+        }
+        store.getAttachments(type, id).then(function (attachments) {
+          attrs._attachments = attachments;
+          resolve(attrs);
+        });
       }, reject);
     });
   };
@@ -87,7 +94,7 @@ module.exports = function (bonnet, settings) {
   //
   // Find all objects of a given type.
   //
-  store.findAll = function (type) {
+  store.findAll = function (type, options) {
     assertDocType(type);
     return new Promise(function (resolve, reject) {
       store.local.allDocs({
@@ -95,9 +102,19 @@ module.exports = function (bonnet, settings) {
         startkey: type + '/',
         endkey: type + '0'
       }).then(function (data) {
-        resolve(data.rows.map(function (row) {
+        var docs = data.rows.map(function (row) {
           return parse(row.doc);
-        }));
+        });
+        if (!options.attachments) { return resolve(docs); }
+        async.each(docs, function (attrs, cb) {
+          store.getAttachments(attrs.type, attrs.id).then(function (attachments) {
+            attrs._attachments = attachments;
+            cb();
+          }, cb);
+        }, function (err) {
+          if (err) { return reject(err); }
+          resolve(docs);
+        });
       }, reject);
     });
   };
@@ -188,14 +205,32 @@ module.exports = function (bonnet, settings) {
 
 
   store.attach = function (type, id, attachment, contentType) {
-    console.log(type, id, attachment, contentType);
+    //console.log(type, id, attachment, contentType);
     return;
-    return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
   };
 
 
   store.getAttachments = function (type, id) {
-    // ...
+    return new Promise(function (resolve, reject) {
+      store.find(type, id).then(function (attrs) {
+        var docId = 'note/' + attrs.id;
+        var attachments = attrs._attachments || {};
+        var attachmentKeys = _.keys(attachments);
+
+        if (!attachmentKeys.length) { return resolve([]); }
+
+        async.each(attachmentKeys, function (key, cb) {
+          store.local.getAttachment(docId, key, function (err, data) {
+            if (err) { return cb(err); }
+            attachments[key].data = data;
+            cb();
+          });
+        }, function (err) {
+          if (err) { return reject(err); }
+          resolve(attachments);
+        });
+      });
+    });
   };
 
   //
@@ -236,7 +271,7 @@ module.exports = function (bonnet, settings) {
 
         emit('change');
 
-        sync();
+        store.sync();
       });
 
       cb();
@@ -245,7 +280,7 @@ module.exports = function (bonnet, settings) {
     if (account.isSignedIn()) {
       store.remoteUrl = settings.remote + '/' + encodeURIComponent('user/' + bonnetId);
       store.remote = new PouchDB(store.remoteUrl);
-      sync(listenToLocalChanges);
+      store.sync(listenToLocalChanges);
     } else {
       listenToLocalChanges();
     }

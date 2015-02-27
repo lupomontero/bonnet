@@ -29,21 +29,27 @@ module.exports = Backbone.Model.extend({
     var success = options.success || noop;
     var error = options.error || noop;
     var type = model.get('type');
+    var store = bonnet.store;
 
     switch (method) {
       case 'create':
-        bonnet.store.add(type, model.toJSON()).then(function (data) {
+        store.add(type, model.toJSON()).then(function (data) {
           success(data);
         }, function (err) {
           error(null, null, err);
         });
         break;
       case 'read':
+        store.find(type, model.id, options).then(function (data) {
+          success(data);
+        }, function (err) {
+          error(null, null, err);
+        });
         break;
       case 'update':
         break;
       case 'delete':
-        bonnet.store.remove(type, model.id).then(function () {
+        store.remove(type, model.id).then(function () {
           success();
         }, function (err) {
           error(null, null, err);
@@ -52,11 +58,6 @@ module.exports = Backbone.Model.extend({
       default:
         throw new Error('Unsupported model sync method');
     }
-  },
-
-  fetchAttachments: function () {
-    var attachments = this.get('_attachments') || {};
-    console.log(attachments);
   }
 
 });
