@@ -15,6 +15,10 @@ module.exports = Backbone.Router.extend({
 
   route: function (route, name, cb) {
     var prefix = this.options.routePrefix || '';
+    if (arguments.length === 2) {
+      cb = name;
+      name = route;
+    }
     this.routes[route] = cb;
     return Backbone.Router.prototype.route.call(this, prefix + route, name, cb);
   },

@@ -15,7 +15,6 @@ var moment = require('moment');
 
 //
 // Other deps:
-// * assert
 // * events.EventEmitter
 // * Promise
 // * PouchDB

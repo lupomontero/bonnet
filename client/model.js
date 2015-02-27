@@ -1,4 +1,3 @@
-var assert = require('assert');
 var _ = require('lodash');
 var Backbone = require('backbone');
 var moment = require('moment');
@@ -53,6 +52,11 @@ module.exports = Backbone.Model.extend({
       default:
         throw new Error('Unsupported model sync method');
     }
+  },
+
+  fetchAttachments: function () {
+    var attachments = this.get('_attachments') || {};
+    console.log(attachments);
   }
 
 });

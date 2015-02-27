@@ -1,4 +1,3 @@
-var assert = require('assert');
 var EventEmitter = require('events').EventEmitter;
 var Promise = require('promise');
 var PouchDB = require('pouchdb');
@@ -9,7 +8,9 @@ var noop = function () {};
 
 
 function assertDocType(type) {
-  assert.equal(typeof type, 'string', 'Model type must be a string');
+  if (!_.isString(type)) {
+    throw new Error('Model type must be a string');
+  }
 }
 
 function parse(doc) {

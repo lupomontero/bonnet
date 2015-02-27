@@ -30,5 +30,9 @@
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.0.0",
     "watchify": "^2.3.0"
+  },
+  "browser": {
+    "handlebars": "./node_modules/handlebars/runtime.js",
+    "pouchdb": "./node_modules/pouchdb/dist/pouchdb.js"
   }
 }

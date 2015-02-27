@@ -127,7 +127,7 @@ module.exports = Backbone.View.extend({
 
   unsubscribeFromGlobalEvents: function () {
     _.each(this._getGlobalEventsHandlers(this.cid), function (ev) {
-      ev.src.off(ev.name, ev.fn);
+      ev.src.removeListener(ev.name, ev.fn);
       console.log('View unsubscribing from global event ' + ev.name);
     });
   },
