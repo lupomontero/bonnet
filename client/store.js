@@ -169,12 +169,6 @@ module.exports = function (bonnet, settings) {
   };
 
 
-  //store.attach = function (type, id, attachment, contentType) {
-  //  console.log(type, id, attachment, contentType);
-  //  return;
-  //  return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
-  //},
-
   //
   // Remove object from store.
   //
@@ -184,6 +178,7 @@ module.exports = function (bonnet, settings) {
     });
   };
 
+
   //
   // Remove all objects of given type from store.
   //
@@ -191,6 +186,17 @@ module.exports = function (bonnet, settings) {
     // ...
   };
 
+
+  store.attach = function (type, id, attachment, contentType) {
+    console.log(type, id, attachment, contentType);
+    return;
+    return db.putAttachment(docId, attachmentId, rev, attachment, contentType);
+  };
+
+
+  store.getAttachments = function (type, id) {
+    // ...
+  };
 
   //
   // Initialise store.
