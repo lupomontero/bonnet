@@ -26,11 +26,6 @@ function toJSON(doc) {
 }
 
 
-function replicationFilter(doc) {
-  return doc._id.indexOf('_design') !== 0;
-}
-
-
 module.exports = function (bonnet, settings) {
 
   var account = bonnet.account;
@@ -52,7 +47,11 @@ module.exports = function (bonnet, settings) {
   store.sync = function (cb) {
     cb = cb || noop;
     if (!store.remoteUrl) { return cb(); }
-    store.remote.replicate.sync(store.local, { filter: replicationFilter })
+    store.remote.replicate.sync(store.local, {
+      filter: function (doc) {
+        return doc._id.indexOf('_design') !== 0;
+      }
+    })
       .on('error', emitSyncEvent.bind(null, 'error'))
       .on('denied', function (err) {
         console.error('sync denied', err);
