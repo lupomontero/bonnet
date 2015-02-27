@@ -43,7 +43,11 @@ module.exports = function (bonnet, settings) {
   //
 
 
+  //
+  // Trigger bidirectional replication.
+  //
   // TODO: DEBOUNCE SYNC!!!
+  //
   store.sync = function (cb) {
     cb = cb || noop;
     if (!store.remoteUrl) { return cb(); }
@@ -71,7 +75,7 @@ module.exports = function (bonnet, settings) {
 
 
   //
-  // Find object by id.
+  // Find object by type and id.
   //
   store.find = function (type, id, options) {
     assertDocType(type);

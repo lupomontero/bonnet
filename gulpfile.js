@@ -21,22 +21,22 @@ var adminBundler = watchify(browserify('./admin/main.js', watchify.args));
 
 
 function bundleClient() {
-  console.log('bundling client...');
+  gutil.log('Bundling client...');
   return clientBundler.bundle()
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
     .pipe(source('bonnet.min.js'))
     .pipe(buffer())
-    .pipe(uglify())
+    //.pipe(uglify())
     .pipe(gulp.dest('./dist'));
 }
 
 function bundleAdmin() {
-  console.log('bundling admin...');
+  gutil.log('Bundling admin...');
   return adminBundler.bundle()
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
     .pipe(source('bundle.min.js'))
     .pipe(buffer())
-    .pipe(uglify())
+    //.pipe(uglify())
     .pipe(gulp.dest('./admin'));
 }
 
