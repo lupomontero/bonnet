@@ -15,6 +15,9 @@ var optionKeys = [
 module.exports = Backbone.Router.extend({
 
   routePrefix: '',
+  collections: {},
+  models: {},
+  views: {},
   templates: null,
 
   initialize: function (options) {

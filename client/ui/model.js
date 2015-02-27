@@ -38,7 +38,7 @@ module.exports = Backbone.Model.extend({
     var success = options.success || noop;
     var error = options.error || noop;
     var type = model.get('type');
-    var store = bonnet.store;
+    var store = (this.app || this.collection.app).store;
 
     switch (method) {
       case 'create':
