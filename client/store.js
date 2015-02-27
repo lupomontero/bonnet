@@ -43,6 +43,11 @@ module.exports = function (bonnet, settings) {
   }
 
 
+  //
+  // Store API
+  //
+
+
   // TODO: DEBOUNCE SYNC!!!
   store.sync = function (cb) {
     cb = cb || noop;
@@ -63,12 +68,7 @@ module.exports = function (bonnet, settings) {
         emitSyncEvent('complete', data);
         cb();
       });
-  }
-
-
-  //
-  // Store API
-  //
+  };
 
 
   //
@@ -82,7 +82,7 @@ module.exports = function (bonnet, settings) {
         if (!options || !options.attachments || !doc._attachments) {
           return resolve(attrs);
         }
-        store.getAttachments(type, id).then(function (attachments) {
+        store.getAttachments(doc).then(function (attachments) {
           attrs._attachments = attachments;
           resolve(attrs);
         });
@@ -107,7 +107,7 @@ module.exports = function (bonnet, settings) {
         });
         if (!options.attachments) { return resolve(docs); }
         async.each(docs, function (attrs, cb) {
-          store.getAttachments(attrs.type, attrs.id).then(function (attachments) {
+          store.getAttachments(attrs).then(function (attachments) {
             attrs._attachments = attachments;
             cb();
           }, cb);
@@ -210,28 +210,27 @@ module.exports = function (bonnet, settings) {
   };
 
 
-  store.getAttachments = function (type, id) {
+  store.getAttachments = function (doc) {
+    var docId = toJSON(doc)._id;
+    var attachments = doc._attachments || {};
+    var attachmentKeys = _.keys(attachments);
+
     return new Promise(function (resolve, reject) {
-      store.find(type, id).then(function (attrs) {
-        var docId = 'note/' + attrs.id;
-        var attachments = attrs._attachments || {};
-        var attachmentKeys = _.keys(attachments);
+      if (!attachmentKeys.length) { return resolve([]); }
 
-        if (!attachmentKeys.length) { return resolve([]); }
-
-        async.each(attachmentKeys, function (key, cb) {
-          store.local.getAttachment(docId, key, function (err, data) {
-            if (err) { return cb(err); }
-            attachments[key].data = data;
-            cb();
-          });
-        }, function (err) {
-          if (err) { return reject(err); }
-          resolve(attachments);
+      async.each(attachmentKeys, function (key, cb) {
+        store.local.getAttachment(docId, key, function (err, data) {
+          if (err) { return cb(err); }
+          attachments[key].data = data;
+          cb();
         });
+      }, function (err) {
+        if (err) { return reject(err); }
+        resolve(attachments);
       });
     });
   };
+
 
   //
   // Initialise store.
