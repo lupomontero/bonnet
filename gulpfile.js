@@ -9,7 +9,9 @@ var gulp = require('gulp');
 var gutil = require('gulp-util');
 var jshint = require('gulp-jshint');
 var mocha = require('gulp-mocha');
+var uglify = require('gulp-uglify');
 var source = require('vinyl-source-stream');
+var buffer = require('vinyl-buffer');
 var watchify = require('watchify');
 var browserify = require('browserify');
 
@@ -22,15 +24,19 @@ function bundleClient() {
   console.log('bundling client...');
   return clientBundler.bundle()
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
-    .pipe(source('bundle.js'))
-    .pipe(gulp.dest('./client'));
+    .pipe(source('bonnet.min.js'))
+    .pipe(buffer())
+    .pipe(uglify())
+    .pipe(gulp.dest('./dist'));
 }
 
 function bundleAdmin() {
   console.log('bundling admin...');
   return adminBundler.bundle()
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
-    .pipe(source('bundle.js'))
+    .pipe(source('bundle.min.js'))
+    .pipe(buffer())
+    .pipe(uglify())
     .pipe(gulp.dest('./admin'));
 }
 

@@ -14,7 +14,7 @@ module.exports = function (argv) {
       user: env.BONNET_COUCH_USER,
       pass: env.BONNET_COUCH_PASS
     }
-  }, _.omit(argv, [ '_' ]))
+  }, _.omit(argv, [ '_' ]));
 
 };
 

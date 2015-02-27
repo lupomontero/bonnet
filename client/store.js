@@ -59,7 +59,7 @@ module.exports = function (bonnet, settings) {
         if (data.pull.end_time > store.lastSync) {
           store.lastSync = data.pull.end_time;
         }
-        emitSyncEvent('complete', data)      
+        emitSyncEvent('complete', data);
         cb();
       });
   }

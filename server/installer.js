@@ -96,7 +96,7 @@ function ensureAdminUser(config, cb) {
     } else if (isAdminParty) {
       createAdminUser(config, cb);
     } else {
-      cb()
+      cb();
     }
   });
 }

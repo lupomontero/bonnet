@@ -43,7 +43,7 @@ module.exports = function (config, cb) {
     method: 'GET',
     path: '/_files/bonnet.js',
     handler: {
-      file: path.join(__dirname, '../client/bundle.js')
+      file: path.join(__dirname, '../dist/bonnet.min.js')
     }
   });
 
