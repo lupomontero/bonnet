@@ -13,6 +13,13 @@ var Backbone = require('backbone');
 var Handlebars = require('handlebars');
 var moment = require('moment');
 
+//
+// Other deps:
+// * assert
+// * events.EventEmitter
+// * Promise
+// * PouchDB
+//
 
 var App = require('./app');
 var noop = function () {};

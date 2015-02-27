@@ -14,6 +14,13 @@ var Backbone = require('backbone');
 var Handlebars = require('handlebars');
 var moment = require('moment');
 
+//
+// Other deps:
+// * assert
+// * events.EventEmitter
+// * Promise
+// * PouchDB
+//
 
 var App = require('./app');
 var noop = function () {};
@@ -74,7 +81,6 @@ Bonnet.moment = window.moment = moment;
 
 },{"./account":"/Users/lupo/work/lupomontero/bonnet/client/account.js","./app":"/Users/lupo/work/lupomontero/bonnet/client/app.js","./collection":"/Users/lupo/work/lupomontero/bonnet/client/collection.js","./model":"/Users/lupo/work/lupomontero/bonnet/client/model.js","./store":"/Users/lupo/work/lupomontero/bonnet/client/store.js","./task":"/Users/lupo/work/lupomontero/bonnet/client/task.js","./view":"/Users/lupo/work/lupomontero/bonnet/client/view.js","async":"/Users/lupo/work/lupomontero/bonnet/node_modules/async/lib/async.js","backbone":"/Users/lupo/work/lupomontero/bonnet/node_modules/backbone/backbone.js","handlebars":"/Users/lupo/work/lupomontero/bonnet/node_modules/handlebars/lib/index.js","lodash":"/Users/lupo/work/lupomontero/bonnet/node_modules/lodash/index.js","moment":"/Users/lupo/work/lupomontero/bonnet/node_modules/moment/moment.js"}],"/Users/lupo/work/lupomontero/bonnet/client/account.js":[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
-var Promise = require('promise');
 var couch = require('../lib/couch')('/_api');
 var uid = require('../lib/uid');
 var noop = function () {};
@@ -188,7 +194,7 @@ module.exports = function (bonnet, settings) {
 };
 
 
-},{"../lib/couch":"/Users/lupo/work/lupomontero/bonnet/lib/couch.js","../lib/uid":"/Users/lupo/work/lupomontero/bonnet/lib/uid.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js","promise":"/Users/lupo/work/lupomontero/bonnet/node_modules/promise/index.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
+},{"../lib/couch":"/Users/lupo/work/lupomontero/bonnet/lib/couch.js","../lib/uid":"/Users/lupo/work/lupomontero/bonnet/lib/uid.js","events":"/Users/lupo/work/lupomontero/bonnet/node_modules/browserify/node_modules/events/events.js"}],"/Users/lupo/work/lupomontero/bonnet/client/app-view.js":[function(require,module,exports){
 var _ = require('lodash');
 var Backbone = require('backbone');
 
@@ -285,6 +291,7 @@ var _ = require('lodash');
 var Backbone = require('backbone');
 var AppView = require('./app-view');
 
+
 module.exports = Backbone.Router.extend({
 
   initialize: function (opt) {
@@ -364,6 +371,7 @@ module.exports = Backbone.Router.extend({
 var Backbone = require('backbone');
 var Model = require('./model');
 var noop = function () {};
+
 
 module.exports = Backbone.Collection.extend({
 

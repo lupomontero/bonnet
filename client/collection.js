@@ -2,6 +2,7 @@ var Backbone = require('backbone');
 var Model = require('./model');
 var noop = function () {};
 
+
 module.exports = Backbone.Collection.extend({
 
   model: Model,

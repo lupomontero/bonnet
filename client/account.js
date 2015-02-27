@@ -1,5 +1,4 @@
 var EventEmitter = require('events').EventEmitter;
-var Promise = require('promise');
 var couch = require('../lib/couch')('/_api');
 var uid = require('../lib/uid');
 var noop = function () {};
