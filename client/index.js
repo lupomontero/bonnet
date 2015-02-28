@@ -29,16 +29,21 @@ module.exports = function Bonnet(options) {
 
   var settings = _.extend({}, defaults, options);
   var bonnet = { settings: settings };
-  var account = bonnet.account = require('./account')(settings);
-  var store = bonnet.store = require('./store')(settings, account);
-  var task = bonnet.task = require('./task')(settings, account, store);
+  var debug = bonnet.debug = require('./debug')(settings);
+  var account = bonnet.account = require('./account')(bonnet);
+  var store = bonnet.store = require('./store')(bonnet);
+  var task = bonnet.task = require('./task')(bonnet);
 
   bonnet.start = function (cb) {
     cb = cb || noop;
+    debug('Starting bonnet client...');
     async.applyEachSeries([
       async.apply(account.init),
       async.apply(store.init),
-    ], cb);
+    ], function (err) {
+      debug(err || 'Bonnet client successfully started');
+      cb(err);
+    });
   };
 
   return bonnet;

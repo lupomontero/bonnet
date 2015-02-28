@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var Backbone = require('backbone');
 var AppView = require('./app-view');
+var View = require('./view');
 
 
 var optionKeys = [
@@ -25,6 +26,7 @@ module.exports = Backbone.Router.extend({
     var bonnet = options.bonnet || require('../')(_.omit(options, optionKeys));
     var bonnetStart = bonnet.start.bind(bonnet);
 
+    bonnet.debug('Router.initialize');
     Backbone.Router.prototype.initialize.call(app, options);
 
     // Set known opts as instance props.
@@ -88,8 +90,8 @@ module.exports = Backbone.Router.extend({
 
   showTemplate: function (name) {
     var app = this;
-    var View = tetrapod.View.extend({ templateName: name });
-    var view = new View({ app: app });
+    var TempView = View.extend({ templateName: name });
+    var view = new TempView({ app: app });
     app.setMainView(view);
     view.render();
   },

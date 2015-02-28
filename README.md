@@ -1,5 +1,6 @@
 # Bonnet
 
-* [Client](./client/README.md)
-* [Server](./server/README.md)
-* [Admin](./admin/README.md)
+* [Client](./client/)
+* [Client UI](./client/ui/)
+* [Server](./server/)
+* [Admin](./admin/)

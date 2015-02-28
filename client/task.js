@@ -1,6 +1,6 @@
 var EventEmitter = require('events').EventEmitter;
 
-module.exports = function (settings, account, store) {
+module.exports = function (bonnet) {
 
   var task = new EventEmitter();
 

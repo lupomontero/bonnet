@@ -26,8 +26,11 @@ function toJSON(doc) {
 }
 
 
-module.exports = function (settings, account) {
+module.exports = function (bonnet) {
 
+  var settings = bonnet.settings;
+  var debug = bonnet.debug.bind(null, '(bonnet.store)');
+  var account = bonnet.account;
   var store = new EventEmitter();
 
   
@@ -240,6 +243,8 @@ module.exports = function (settings, account) {
   // Initialise store.
   //
   store.init = function (cb) {
+    debug('init start');
+
     cb = cb || noop;
 
     var bonnetId = account.id() || '__bonnet_anon';
@@ -277,6 +282,7 @@ module.exports = function (settings, account) {
         store.sync();
       });
 
+      debug('init ok');
       cb();
     }
 

@@ -9,8 +9,9 @@ function userDocUrl(email) {
 }
 
 
-module.exports = function (settings) {
+module.exports = function (bonnet) {
 
+  var debug = bonnet.debug.bind(null, '(bonnet.account)');
   var account = new EventEmitter();
   var hasInit = false;
 
@@ -65,12 +66,13 @@ module.exports = function (settings) {
 
 
   account.destroy = function () {
-    var userCtx = (account.session || {}).userCtx || {};
-    var url = userDocUrl(userCtx.name);
-    console.log(url);
-    couch.get(url, function (err, data) {
-      console.log(err, data);
-    });
+    throw new Error('FIXME: Unimplented!');
+    //var userCtx = (account.session || {}).userCtx || {};
+    //var url = userDocUrl(userCtx.name);
+    //console.log(url);
+    //couch.get(url, function (err, data) {
+    //  console.log(err, data);
+    //});
     // Destroy local db
     // Delete user from remote db
     // Server should remove user db
@@ -84,6 +86,8 @@ module.exports = function (settings) {
 
 
   account.init = function (cb) {
+    debug('init start');
+
     cb = cb || noop;
 
     var wasSignedIn = account.isSignedIn();
@@ -99,9 +103,9 @@ module.exports = function (settings) {
       } else if (wasSignedIn && !isSignedIn) {
         account.emit('signout');
       }
+      debug('init ok');
       cb();
     }, function (err) {
-      console.error(err);
       cb(err);
     });
   };
