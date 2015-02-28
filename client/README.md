@@ -1,18 +1,31 @@
 # Bonnet Client
 
+This is the bare-bones front-end library (for a full blown experience check out [BonnetUI](./ui/)). This assumes you are using `browserify` to bundle your browser scripts.
+
+```js
+// ie: in your `main.js`
+var Bonnet = require('bonnet/client');
+var bonnet = Bonnet(options);
+```
+
+## Options
+
+* `remote`: URL to backend HTTP API. Default is `/_api`.
+
 ## `bonnet.account`
 
 ### Methods
 
 ```js
-account.signUp(email, pass);
-account.signIn(email, id);
-account.changePassword(secret, newSecret);
-account.changeUsername(secret, newEmail);
-account.signOut();
-account.resetPassword(email);
-account.destroy();
-account.isSignedIn();
+bonnet.account.id();
+bonnet.account.signUp(email, pass);
+bonnet.account.signIn(email, id);
+bonnet.account.changePassword(secret, newSecret);
+bonnet.account.changeUsername(secret, newEmail);
+bonnet.account.signOut();
+bonnet.account.resetPassword(email);
+bonnet.account.destroy();
+bonnet.account.isSignedIn();
 ```
 
 ### Events
@@ -21,20 +34,24 @@ account.isSignedIn();
 * `signin`
 * `signout`
 
+### Properties
+
+* `session`
+
 ## `bonnet.store`
 
 ### Methods
 
 ```js
-store.find(type, id, options);
-store.findAll(type, options);
-store.add(type, attrs);
-store.update(type, id, attrs);
-store.remove(type, id);
-store.removeAll(type);
-store.attach(type, id, attachments);
-store.getAttachments(type, id);
-store.sync();
+bonnet.store.find(type, id, options);
+bonnet.store.findAll(type, options);
+bonnet.store.add(type, attrs);
+bonnet.store.update(type, id, attrs);
+bonnet.store.remove(type, id);
+bonnet.store.removeAll(type);
+bonnet.store.attach(type, id, attachments);
+bonnet.store.getAttachments(type, id);
+bonnet.store.sync();
 ```
 
 ### Events
@@ -52,9 +69,17 @@ store.sync();
 
 ## `bonnet.task`
 
+### Methods
+
 ```js
-task.start(type, attrs);
-task.abort(type, id);
-task.restart(type, id, extraAttrs);
-task.restartAll();
+bonnet.task.start(type, attrs);
+bonnet.task.abort(type, id);
+bonnet.task.restart(type, id, extraAttrs);
+bonnet.task.restartAll();
 ```
+
+### Events
+
+* `start`
+* `abort`
+* `restart`

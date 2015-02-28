@@ -1,16 +1,23 @@
-# Bonnet UI
+# BonnetUI
+
+```js
+// ie: in your `main.js`
+var BonnetUI = require('bonnet/client/ui');
+var app = BonnetUI(options);
+```
 
 ## `Bonnet.View`
 
 ```js
-var Notes = require('../collections/notes');
+var View = require('bonnet/client/ui/view');
 
-module.exports = Bonnet.View.extend({
+module.exports = View.extend({
   className: 'container',
   templateName: 'index',
   initialize: function () {
     var view = this;
-    var notes = view.model = new Notes();
+    var app = view.app;
+    var notes = view.model = app.createCollection('note');
     notes.on('sync', function () {
       view.render();
     });
@@ -22,7 +29,9 @@ module.exports = Bonnet.View.extend({
 ## `Bonnet.Model`
 
 ```js
-module.exports = Bonnet.Model.extend({
+var Model = require('bonnet/client/ui/model');
+
+module.exports = Model.extend({
   defaults: function () {
     return {
       type: 'note',
@@ -35,9 +44,10 @@ module.exports = Bonnet.Model.extend({
 ## `Bonnet.Collection`
 
 ```js
+var Collection = require('bonnet/client/ui/collection');
 var Note = require('../models/note');
 
-module.exports = Bonnet.Collection.extend({
+module.exports = Collection.extend({
   model: Note
 });
 ```
