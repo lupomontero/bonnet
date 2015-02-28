@@ -1,12 +1,29 @@
 # BonnetUI
 
+Full blown front-end framework (assumes `browserify`, includes `Backbone`, `Handlebars`, `moment`, `async`...).
+
+For a more minimal and less opinionated approach check out the bare-bones client library: [Bonnet]('../').
+
+
 ```js
 // ie: in your `main.js`
 var BonnetUI = require('bonnet/client/ui');
-var app = BonnetUI(options);
+
+var app = BonnetUI({
+  views: {},
+  models: {},
+  collections: {},
+  templates: {}
+});
+
+app.route('', function () {
+  app.showView('index');
+});
+
+app.start();
 ```
 
-## `Bonnet.View`
+## `View`
 
 ```js
 var View = require('bonnet/client/ui/view');
@@ -26,7 +43,7 @@ module.exports = View.extend({
 });
 ```
 
-## `Bonnet.Model`
+## `Model`
 
 ```js
 var Model = require('bonnet/client/ui/model');
@@ -41,7 +58,7 @@ module.exports = Model.extend({
 });
 ```
 
-## `Bonnet.Collection`
+## `Collection`
 
 ```js
 var Collection = require('bonnet/client/ui/collection');
