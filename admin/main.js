@@ -1,3 +1,4 @@
+/*
 var Backbone = require('backbone');
 // Have to tell Backbone where to find jQuery
 Backbone.$ = window.jQuery;
@@ -33,4 +34,4 @@ Couch('/_api').get('/_session', function (err, data) {
   session = data || { userCtx: { name: null, roles: [] } };
   app.start();
 });
-
+*/
