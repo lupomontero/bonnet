@@ -2,7 +2,7 @@
 
 Full blown front-end framework (assumes `browserify`, includes `Backbone`, `Handlebars`, `moment`, `async`...).
 
-For a more minimal and less opinionated approach check out the bare-bones client library: [Bonnet]('../').
+For a more minimal and less opinionated approach check out the bare-bones client library: [Bonnet](../).
 
 
 ```js
